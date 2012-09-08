@@ -2,6 +2,7 @@
 class StripeComponent extends Component {
 
 	public $currency = 'usd';
+	public $fields = array('stripe_id' => 'id');
 
 	public function startup(Controller $controller) {
 		$this->Controller = $controller;
@@ -14,58 +15,86 @@ class StripeComponent extends Component {
 		if ($currency) {
 			$this->currency = $currency;
 		}
+		// field map for charge response, or use default (set above)
+		$fields = Configure::read('Stripe.fields');
+		if ($fields) {
+			$this->fields = $fields;
+		}
 	}
 
 	public function charge($data, $mode) {
-		// mock results for testing
-		if (
-			(isset($this->Controller->Order->useDbConfig) &&
-			$this->Controller->Order->useDbConfig == 'test') ||
-			$this->Controller->name == 'TestOrders'
-			)
-		{
-			return $this->__testCharge($data, $mode);
+		// set the Stripe API key
+		$key = Configure::read($mode . '.secret');
+		if (!$key) {
+			throw new Exception('Stripe API key or mode is not set.');
 		}
 
-		$key = Configure::read($mode . '.secret');
-		Stripe::setApiKey($key);
+		// $data MUST contain 'amount' and 'stripeToken' to make a charge.
+		if (!isset($data['amount']) || !isset($data['stripeToken'])) {
+			throw new Exception('The required amount or stripeToken fields are missing.');
+		}
 
+		// set the (optional) description field to null if not set in $data
+		if (!isset($data['description'])) {
+			$data['description'] = null;
+		}
+
+		// format the amount, in cents.
+		$data['amount'] = number_format($data['amount'], 2) * 100;
+
+		Stripe::setApiKey($key);
+		$error = null;
 		try {
 			$charge = Stripe_Charge::create(array(
-				'amount' => $data['amount'] * 100, // amount in cents
+				'amount' => $data['amount'],
 				'currency' => $this->currency,
 				'card' => $data['stripeToken'],
 				'description' => $data['description']
 			));
+
+		} catch(Stripe_CardError $e) {
+			$body = $e->getJsonBody();
+			$err  = $body['error'];
+			CakeLog::warning($err['type'] . ': ' . $err['code'] . ': ' . $err['message']);
+			$error = $err['message'];
+
+		} catch (Stripe_InvalidRequestError $e) {
+			$body = $e->getJsonBody();
+			$err  = $body['error'];
+			CakeLog::warning($err['type'] . ': ' . $err['message']);
+			$error = $err['message'];
+
+		} catch (Stripe_AuthenticationError $e) {
+			CakeLog::warning('Stripe API key rejected!');
+			$error = 'Stripe API key rejected.';
+
+		} catch (Stripe_Error $e) {
+			CakeLog::warning('Stripe_Error: Stripe could be down.');
+			$error = 'Stripe could be down, try again later.';
+
 		} catch (Exception $e) {
-			$error = array();
-			CakeLog::write('transactions', $e->getCode() . ', '. $e->getMessage());
-			$error['Error']['message'] = $e->getMessage();
-			return $error;
+			CakeLog::warning('Unknown error.');
+			$error = 'There was an error, try again later.';
 		}
 
-		return $charge;
+		if ($error != null) {
+			return (string) $error;
+		}
+
+		return $this->formatResult($charge);
 	}
 
-	// used only for testing
-	private function __testCharge($data, $mode) {
-		$result = null;
-		if ($mode == 'success') {
-			$result = array(
-				'Success' => array(
-					'id' => 'ch_tr3GjUPSCNDAIs'
-				)
-			);
-		}
-		if ($mode == 'error') {
-			$result = array(
-				'Error' => array(
-					'message' => 'Invalid token id: tok_WIzWO5qKRmRXXX'
-				)
-			);
-		}
-		if ($mode == 'user') {
-			$result = $data;
+	// returns an array of fields we want from stripe's charge object
+	public function formatResult($charge) {
+		$result = array();
+		foreach ($this->fields as $local => $stripe) {
+			if (is_array($stripe)) {
+				foreach ($stripe as $obj => $field) {
+					$result[$local] = $charge->$obj->$field;
+				}
+			} else {
+				$result[$local] = $charge->$stripe;
+			}
 		}
 		return $result;
 	}
