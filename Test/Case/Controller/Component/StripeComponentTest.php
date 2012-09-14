@@ -1,106 +1,206 @@
 <?php
-App::uses('OrdersController', 'Controller');
+App::uses('Controller', 'Controller');
+App::uses('CakeRequest', 'Network');
+App::uses('CakeResponse', 'Network');
 App::uses('ComponentCollection', 'Controller');
-App::uses('StripeComponent', 'Controller/Component');
+App::uses('StripeComponent', 'Stripe.Controller/Component');
 
-class TestOrdersController extends OrdersController {
-	public $autoRender = false;
+class TestPaymentController extends Controller {
+	// hi
 }
 
-/**
- * StripeComponent Test Case
- *
- */
 class StripeComponentTest extends CakeTestCase {
 
-/**
- * Fixtures
- *
- * @var array
- */
-	public $fixtures = array();
+	public $StripeComponent = null;
+	public $Controller = null;
 
-/**
- * setUp method
- *
- * @return void
- */
 	public function setUp() {
+		if (!Configure::read('Stripe.TestSecret')) {
+			throw new CakeException('Stripe.TestSecret must be set in APP/Config/bootstrap.php');
+		}
 		parent::setUp();
-		$Collection = new ComponentCollection();
-		$this->Stripe = new StripeComponent($Collection);
+        $Collection = new ComponentCollection();
+        $this->StripeComponent = new StripeComponent($Collection);
+        $CakeRequest = new CakeRequest();
+        $CakeResponse = new CakeResponse();
+        $this->Controller = new TestPaymentController($CakeRequest, $CakeResponse);
 
-		$this->Orders = new TestOrdersController();
-		$this->Orders->constructClasses();
-		$this->Stripe->startup($this->Orders);
+		Configure::write('Stripe.currency', null);
+		Configure::write('Stripe.fields', null);
 	}
 
-/**
- * tearDown method
- *
- * @return void
- */
 	public function tearDown() {
-		unset($this->Stripe);
-
 		parent::tearDown();
+		unset($this->StripeComponent);
+		unset($this->Controller);
 	}
 
-/**
- * testCharge method
- *
- * @return void
- */
-	public function testCharge() {
+	public function testStartupDefaults() {
+		$this->StripeComponent->startup($this->Controller);
+
+		$this->assertTrue(class_exists('Stripe'));
+		$this->assertEquals('usd', $this->StripeComponent->currency);
+		$this->assertEquals('Test', $this->StripeComponent->mode);
+		$expected = array('stripe_id' => 'id');
+		$this->assertEquals($expected, $this->StripeComponent->fields);
+	}
+
+	public function testStartupWithSettings() {
+		Configure::write('Stripe.mode', 'Live');
+		Configure::write('Stripe.currency', 'xxx');
+		Configure::write('Stripe.fields', array(
+			'stripe_id' => 'id',
+			'stripe_last4' => array('card' => 'last4'),
+			'stripe_address_zip_check' => array('card' => 'address_zip_check'),
+			'stripe_cvc_check' => array('card' => 'cvc_check'),
+			'stripe_amount' => 'amount'
+		));
+
+		$this->StripeComponent->startup($this->Controller);
+		$this->assertTrue(class_exists('Stripe'));
+		$this->assertEquals('xxx', $this->StripeComponent->currency);
+		$this->assertEquals('Live', $this->StripeComponent->mode);
+		$expected = array(
+			'stripe_id' => 'id',
+			'stripe_last4' => array(
+				'card' => 'last4'
+			),
+			'stripe_address_zip_check' => array(
+				'card' => 'address_zip_check'
+			),
+			'stripe_cvc_check' => array(
+				'card' => 'cvc_check'
+			),
+			'stripe_amount' => 'amount'
+		);
+		$this->assertEquals($expected, $this->StripeComponent->fields);
+	}
+
+	/**
+	 * @expectedException CakeException
+	 * @expectedExceptionMessage Stripe API key is not set.
+	 */
+	public function testChargeNoApiKey() {
+		Configure::write('Stripe.TestSecret', null);
+		$this->StripeComponent->charge(null);
+	}
+
+	/**
+	 * @expectedException CakeException
+	 * @expectedExceptionMessage The required amount or stripeToken fields are missing.
+	 */
+	public function testChargeInvalidData() {
+		$data = array();
+		$this->StripeComponent->charge($data);
+
+		$data = array('amount' => 7, 'something' => 'wrong');
+		$this->StripeComponent->charge($data);
+	}
+
+	public function testChargeDefaults() {
+		$this->StripeComponent->startup($this->Controller);
+
+		Stripe::setApiKey(Configure::read('Stripe.TestSecret'));
+		$token = Stripe_Token::create(array(
+			"card" => array(
+			"number" => "4242424242424242",
+			"exp_month" => 12,
+			"exp_year" => 2020,
+			"cvc" => 777
+		)));
+		$data = array('amount' => 7.45, 'stripeToken' => $token->id);
+		$result = $this->StripeComponent->charge($data);
+		$this->assertRegExp('/^ch\_[a-zA-Z0-9]+/', $result['stripe_id']);
+
+		$charge = Stripe_Charge::retrieve($result['stripe_id']);
+		$this->assertEquals($result['stripe_id'], $charge->id);
+		$data['amount'] = number_format($data['amount'], 2) * 100;
+		$this->assertEquals($data['amount'], $charge->amount);
+	}
+
+	public function testChargeWithDescriptionAndFields() {
+		Configure::write('Stripe.fields', array(
+			'stripe_id' => 'id',
+			'stripe_last4' => array('card' => 'last4'),
+			'stripe_address_zip_check' => array('card' => 'address_zip_check'),
+			'stripe_cvc_check' => array('card' => 'cvc_check'),
+			'stripe_amount' => 'amount'
+		));
+
+		$this->StripeComponent->startup($this->Controller);
+
+		Stripe::setApiKey(Configure::read('Stripe.TestSecret'));
+		$token = Stripe_Token::create(array(
+			"card" => array(
+			"number" => "4242424242424242",
+			"exp_month" => 12,
+			"exp_year" => 2020,
+			"cvc" => 777
+		)));
 		$data = array(
-			'id' => '10',
-			'cart_uuid' => '4ffb145c-3a78-4fb1-be68-00d9dd5460c2',
-			'billing_email' => 'test@chronon.com',
-			'billing_first_name' => 'Gregory',
-			'billing_last_name' => 'Gaskill',
-			'billing_company' => '',
-			'billing_address_1' => '2189 Hillsbury Rd',
-			'billing_address_2' => '',
-			'billing_city' => 'Westlake Village',
-			'billing_state' => 'CA',
-			'billing_zip' => '91361',
-			'billing_phone' => '805-500-6811',
-			'shipping_first_name' => 'Gregory',
-			'shipping_last_name' => 'Gaskill',
-			'shipping_company' => '',
-			'shipping_address_1' => '2189 Hillsbury Rd',
-			'shipping_address_2' => '',
-			'shipping_city' => 'Westlake Village',
-			'shipping_state' => 'CA',
-			'shipping_zip' => '91361',
-			'created' => '2012-07-09 17:28:08',
-			'message' => '',
-			'order_total' => '13.45',
-			'stripeToken' => 'tok_WIzWO5qKRmRXXX'
+			'amount' => 5.45,
+			'stripeToken' => $token->id,
+			'description' => 'Casi Robot - casi@robot.com'
 		);
 
-		$result = $this->Stripe->charge($data, 'error');
+		$result = $this->StripeComponent->charge($data);
 		debug($result);
-		$expected = array(
-			'Error' => array(
-				'message' => 'Invalid token id: tok_WIzWO5qKRmRXXX'
-			)
-		);
-		$this->assertEquals($expected, $result);
+		$this->assertRegExp('/^ch\_[a-zA-Z0-9]+/', $result['stripe_id']);
 
-		$result = $this->Stripe->charge($data, 'success');
-		debug($result);
-		$expected = array(
-			'Success' => array(
-				'id' => 'ch_tr3GjUPSCNDAIs'
-			)
-		);
-		$this->assertEquals($expected, $result);
+		$charge = Stripe_Charge::retrieve($result['stripe_id']);
 
-		$result = $this->Stripe->charge($data, 'user');
-		debug($result);
-		$expected = $data;
-		$this->assertEquals($expected, $result);
+		$data['amount'] = number_format($data['amount'], 2) * 100;
+		$this->assertEquals($data['amount'], $charge->amount);
+
+		$this->assertEquals($result['stripe_id'], $charge->id);
+		$this->assertEquals($result['stripe_last4'], $charge->card->last4);
+		$this->assertEquals($result['stripe_address_zip_check'], $charge->card->address_zip_check);
+		$this->assertEquals($result['stripe_cvc_check'], $charge->card->cvc_check);
+	}
+
+	public function testChargeCardError() {
+		$this->StripeComponent->startup($this->Controller);
+
+		Stripe::setApiKey(Configure::read('Stripe.TestSecret'));
+		$token = Stripe_Token::create(array(
+			"card" => array(
+			"number" => "4000000000000002",
+			"exp_month" => 12,
+			"exp_year" => 2020,
+			"cvc" => 777
+		)));
+		$data = array('amount' => 1.77, 'stripeToken' => $token->id);
+		$result = $this->StripeComponent->charge($data);
+		$this->assertInternalType('string', $result);
+		$this->assertEquals('Your card was declined.', $result);
+	}
+
+	public function testChargeInvalidRequestError() {
+		$this->StripeComponent->startup($this->Controller);
+
+		Stripe::setApiKey(Configure::read('Stripe.TestSecret'));
+		$data = array('amount' => 2.77, 'stripeToken' => 'tok_0MzJoNA8ZPrspx');
+		$result = $this->StripeComponent->charge($data);
+		$this->assertInternalType('string', $result);
+		$this->assertContains('Invalid token id:', $result);
+	}
+
+	public function testChargeAuthError() {
+		$this->StripeComponent->startup($this->Controller);
+
+		Stripe::setApiKey(Configure::read('Stripe.TestSecret'));
+		$token = Stripe_Token::create(array(
+			"card" => array(
+			"number" => "4242424242424242",
+			"exp_month" => 12,
+			"exp_year" => 2020,
+			"cvc" => 777
+		)));
+		Configure::write('Stripe.TestSecret', '123456789');
+		$data = array('amount' => 3.77, 'stripeToken' => $token->id);
+		$result = $this->StripeComponent->charge($data);
+		$this->assertInternalType('string', $result);
+		$this->assertEquals('Payment processor API key error.', $result);
 	}
 
 }
