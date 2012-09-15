@@ -102,11 +102,13 @@ class StripeComponentTest extends CakeTestCase {
 
 		Stripe::setApiKey(Configure::read('Stripe.TestSecret'));
 		$token = Stripe_Token::create(array(
-			"card" => array(
-			"number" => "4242424242424242",
-			"exp_month" => 12,
-			"exp_year" => 2020,
-			"cvc" => 777
+			'card' => array(
+			'number' => '4242424242424242',
+			'exp_month' => 12,
+			'exp_year' => 2020,
+			'cvc' => 777,
+			'name' => 'Casi Robot',
+			'address_zip' => '91361'
 		)));
 		$data = array('amount' => 7.45, 'stripeToken' => $token->id);
 		$result = $this->StripeComponent->charge($data);

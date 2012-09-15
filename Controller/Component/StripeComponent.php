@@ -1,10 +1,58 @@
 <?php
+/**
+ * StripeComponent
+ *
+ * A component that handles payment processing using Stripe.
+ *
+ * PHP version 5
+ *
+ * @package		StripeComponent
+ * @author		Gregory Gaskill <one@chronon.com>
+ * @license		MIT License (http://www.opensource.org/licenses/mit-license.php)
+ * @link		https://github.com/chronon/CakePHP-StripeComponent-Plugin
+ */
+
+App::uses('Component', 'Controller');
+
+/**
+ * StripeComponent
+ *
+ * @package		StripeComponent
+ */
 class StripeComponent extends Component {
 
+/**
+ * Default Stripe mode to use: Test or Live
+ *
+ * @var string
+ * @access public
+ */
 	public $mode = 'Test';
+
+/**
+ * Default currency to use for the transaction
+ *
+ * @var string
+ * @access public
+ */
 	public $currency = 'usd';
+
+/**
+ * Default mapping of fields to be returned: local_field => stripe_field
+ *
+ * @var array
+ * @access public
+ */
 	public $fields = array('stripe_id' => 'id');
 
+/**
+ * Controller startup. Loads the Stripe API library and sets options from
+ * APP/Config/bootstrap.php.
+ *
+ * @param Controller $controller Instantiating controller
+ * @return void
+ * @throws CakeException
+ */
 	public function startup(Controller $controller) {
 		$this->Controller = $controller;
 
@@ -35,6 +83,15 @@ class StripeComponent extends Component {
 		}
 	}
 
+/**
+ * The charge method prepares data for Stripe_Charge::create and attempts a
+ * transaction.
+ *
+ * @param array	$data Must contain 'amount' and 'stripeToken'.
+ * @return array $charge if success, string $error if failure.
+ * @throws CakeException
+ * @throws CakeException
+ */
 	public function charge($data) {
 		// set the Stripe API key
 		$key = Configure::read('Stripe.' . $this->mode . 'Secret');
@@ -68,37 +125,45 @@ class StripeComponent extends Component {
 		} catch(Stripe_CardError $e) {
 			$body = $e->getJsonBody();
 			$err  = $body['error'];
-			CakeLog::warning($err['type'] . ': ' . $err['code'] . ': ' . $err['message']);
+			CakeLog::error('Stripe: ' . $err['type'] . ': ' . $err['code'] . ': ' . $err['message'], 'stripe');
 			$error = $err['message'];
 
 		} catch (Stripe_InvalidRequestError $e) {
 			$body = $e->getJsonBody();
 			$err  = $body['error'];
-			CakeLog::warning($err['type'] . ': ' . $err['message']);
+			CakeLog::error('Stripe: ' . $err['type'] . ': ' . $err['message'], 'stripe');
 			$error = $err['message'];
 
 		} catch (Stripe_AuthenticationError $e) {
-			CakeLog::warning('Stripe API key rejected!');
+			CakeLog::error('Stripe: API key rejected!', 'stripe');
 			$error = 'Payment processor API key error.';
 
 		} catch (Stripe_Error $e) {
-			CakeLog::warning('Stripe_Error: Stripe could be down.');
+			CakeLog::error('Stripe: Stripe_Error - Stripe could be down.', 'stripe');
 			$error = 'Payment processor error, try again later.';
 
 		} catch (Exception $e) {
-			CakeLog::warning('Unknown error.');
+			CakeLog::error('Stripe: Unknown error.', 'stripe');
 			$error = 'There was an error, try again later.';
 		}
 
 		if ($error !== null) {
-			// make SURE return value is a string if the charge failed.
-			return (string) $error;
+			// an error is always a string
+			return (string)$error;
 		}
+
+		CakeLog::info('Stripe: charge id ' . $charge->id, 'stripe');
 
 		return $this->_formatResult($charge);
 	}
 
-	// returns an array of fields we want from stripe's charge object
+/**
+ * Returns an array of fields we want from Stripe's charge object
+ *
+ *
+ * @param object $charge A successful charge object.
+ * @return array The desired fields from the charge object as an array.
+ */
 	protected function _formatResult($charge) {
 		$result = array();
 		foreach ($this->fields as $local => $stripe) {
