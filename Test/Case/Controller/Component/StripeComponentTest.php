@@ -19,11 +19,11 @@ class StripeComponentTest extends CakeTestCase {
 			throw new CakeException('Stripe.TestSecret must be set in APP/Config/bootstrap.php');
 		}
 		parent::setUp();
-        $Collection = new ComponentCollection();
-        $this->StripeComponent = new StripeComponent($Collection);
-        $CakeRequest = new CakeRequest();
-        $CakeResponse = new CakeResponse();
-        $this->Controller = new TestPaymentController($CakeRequest, $CakeResponse);
+		$Collection = new ComponentCollection();
+		$this->StripeComponent = new StripeComponent($Collection);
+		$CakeRequest = new CakeRequest();
+		$CakeResponse = new CakeResponse();
+		$this->Controller = new TestPaymentController($CakeRequest, $CakeResponse);
 
 		Configure::write('Stripe.currency', null);
 		Configure::write('Stripe.fields', null);
