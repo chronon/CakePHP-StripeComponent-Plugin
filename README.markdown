@@ -8,8 +8,8 @@ and return an array of the fields you want.
 Compatibility:
 --------------
 
-Tested with CakePHP 2.2.x, though should work with any 2.x version. The required Stripe PHP API
-library requires PHP 5 with cURL support.
+Tested with CakePHP 2.2.x and 2.3.x. The required Stripe PHP API library requires PHP 5 with cURL 
+support.
 
 Installation:
 -------------
