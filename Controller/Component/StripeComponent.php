@@ -124,13 +124,13 @@ class StripeComponent extends Component {
 
 		} catch(Stripe_CardError $e) {
 			$body = $e->getJsonBody();
-			$err  = $body['error'];
+			$err = $body['error'];
 			CakeLog::error('Stripe: ' . $err['type'] . ': ' . $err['code'] . ': ' . $err['message'], 'stripe');
 			$error = $err['message'];
 
 		} catch (Stripe_InvalidRequestError $e) {
 			$body = $e->getJsonBody();
-			$err  = $body['error'];
+			$err = $body['error'];
 			CakeLog::error('Stripe: ' . $err['type'] . ': ' . $err['message'], 'stripe');
 			$error = $err['message'];
 
