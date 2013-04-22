@@ -56,7 +56,7 @@ class StripeComponent extends Component {
 	public function startup(Controller $controller) {
 		$this->Controller = $controller;
 
-		// load the stripe vendor class
+		// load the stripe vendor class IF it hasn't been autoloaded (composer)
 		App::import('Vendor', 'Stripe.Stripe', array(
 			'file' => 'Stripe' . DS . 'lib' . DS . 'Stripe.php')
 		);
