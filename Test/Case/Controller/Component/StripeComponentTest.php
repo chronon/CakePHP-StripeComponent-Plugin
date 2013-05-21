@@ -116,8 +116,52 @@ class StripeComponentTest extends CakeTestCase {
 
 		$charge = Stripe_Charge::retrieve($result['stripe_id']);
 		$this->assertEquals($result['stripe_id'], $charge->id);
-		$data['amount'] = number_format($data['amount'], 2) * 100;
+		$data['amount'] = $data['amount'] * 100;
 		$this->assertEquals($data['amount'], $charge->amount);
+	}
+
+	public function testChargeLargeAmount() {
+		$this->StripeComponent->startup($this->Controller);
+
+		Stripe::setApiKey(Configure::read('Stripe.TestSecret'));
+		$token = Stripe_Token::create(array(
+			'card' => array(
+			'number' => '4242424242424242',
+			'exp_month' => 12,
+			'exp_year' => 2020,
+			'cvc' => 777,
+			'name' => 'Large Amount',
+			'address_zip' => '91361'
+		)));
+		$data = array('amount' => 1000, 'stripeToken' => $token->id);
+		$result = $this->StripeComponent->charge($data);
+		$this->assertRegExp('/^ch\_[a-zA-Z0-9]+/', $result['stripe_id']);
+
+		$charge = Stripe_Charge::retrieve($result['stripe_id']);
+		$this->assertEquals($result['stripe_id'], $charge->id);
+		$data['amount'] = $data['amount'] * 100;
+		$this->assertEquals($data['amount'], $charge->amount);
+	}
+
+	/**
+	 * @expectedException CakeException
+	 * @expectedExceptionMessage Amount must be numeric.
+	 */
+	public function testChargeInvalidAmount() {
+		$this->StripeComponent->startup($this->Controller);
+
+		Stripe::setApiKey(Configure::read('Stripe.TestSecret'));
+		$token = Stripe_Token::create(array(
+			'card' => array(
+			'number' => '4242424242424242',
+			'exp_month' => 12,
+			'exp_year' => 2020,
+			'cvc' => 777,
+			'name' => 'Invalid Amount',
+			'address_zip' => '91361'
+		)));
+		$data = array('amount' => 'casi', 'stripeToken' => $token->id);
+		$result = $this->StripeComponent->charge($data);
 	}
 
 	public function testChargeWithDescriptionAndFields() {
@@ -151,7 +195,7 @@ class StripeComponentTest extends CakeTestCase {
 
 		$charge = Stripe_Charge::retrieve($result['stripe_id']);
 
-		$data['amount'] = number_format($data['amount'], 2) * 100;
+		$data['amount'] = $data['amount'] * 100;
 		$this->assertEquals($data['amount'], $charge->amount);
 
 		$this->assertEquals($result['stripe_id'], $charge->id);

@@ -91,6 +91,7 @@ class StripeComponent extends Component {
  * @return array $charge if success, string $error if failure.
  * @throws CakeException
  * @throws CakeException
+ * @throws CakeException
  */
 	public function charge($data) {
 		// set the Stripe API key
@@ -104,13 +105,18 @@ class StripeComponent extends Component {
 			throw new CakeException('The required amount or stripeToken fields are missing.');
 		}
 
+		// if supplied amount is not numeric, abort.
+		if (!is_numeric($data['amount'])) {
+			throw new CakeException('Amount must be numeric.');
+		}
+
 		// set the (optional) description field to null if not set in $data
 		if (!isset($data['description'])) {
 			$data['description'] = null;
 		}
 
 		// format the amount, in cents.
-		$data['amount'] = number_format($data['amount'], 2) * 100;
+		$data['amount'] = $data['amount'] * 100;
 
 		Stripe::setApiKey($key);
 		$error = null;
