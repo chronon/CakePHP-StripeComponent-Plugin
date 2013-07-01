@@ -218,7 +218,7 @@ class StripeComponentTest extends CakeTestCase {
 		$data = array('amount' => 1.77, 'stripeToken' => $token->id);
 		$result = $this->StripeComponent->charge($data);
 		$this->assertInternalType('string', $result);
-		$this->assertEquals('Your card was declined', $result);
+		$this->assertEquals('Your card was declined.', $result);
 	}
 
 	public function testChargeInvalidRequestError() {
