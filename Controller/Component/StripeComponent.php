@@ -87,7 +87,7 @@ class StripeComponent extends Component {
  * The charge method prepares data for Stripe_Charge::create and attempts a
  * transaction.
  *
- * @param array	$data Must contain 'amount' and 'stripeToken'.
+ * @param array	$data Must contain 'amount' and 'stripeToken' or 'stripeCustomer'.
  * @return array $charge if success, string $error if failure.
  * @throws CakeException
  * @throws CakeException
@@ -100,9 +100,9 @@ class StripeComponent extends Component {
 			throw new CakeException('Stripe API key is not set.');
 		}
 
-		// $data MUST contain 'amount' and 'stripeToken' to make a charge.
-		if (!isset($data['amount']) || !isset($data['stripeToken'])) {
-			throw new CakeException('The required amount or stripeToken fields are missing.');
+		// $data MUST contain 'amount' and 'stripeToken' or 'stripeCustomer' to make a charge.
+		if (!isset($data['amount']) || (!isset($data['stripeToken'])) && !isset($data['stripeCustomer'])) {
+			throw new CakeException('The required amount or stripeToken/stripeCustomer fields are missing.');
 		}
 
 		// if supplied amount is not numeric, abort.
@@ -121,12 +121,19 @@ class StripeComponent extends Component {
 		Stripe::setApiKey($key);
 		$error = null;
 		try {
-			$charge = Stripe_Charge::create(array(
+			$chargeData = array(
 				'amount' => $data['amount'],
 				'currency' => $this->currency,
-				'card' => $data['stripeToken'],
 				'description' => $data['description']
-			));
+			);
+			
+			if (isset($data['stripeToken'])) {
+				$chargeData['card'] = $data['stripeToken'];
+			} else {
+				$chargeData['customer'] = $data['stripeCustomer'];
+			}
+			
+			$charge = Stripe_Charge::create($chargeData);
 
 		} catch(Stripe_CardError $e) {
 			$body = $e->getJsonBody();
