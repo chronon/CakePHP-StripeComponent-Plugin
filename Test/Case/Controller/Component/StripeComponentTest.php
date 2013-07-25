@@ -87,7 +87,7 @@ class StripeComponentTest extends CakeTestCase {
 
 	/**
 	 * @expectedException CakeException
-	 * @expectedExceptionMessage The required amount or stripeToken fields are missing.
+	 * @expectedExceptionMessage The required amount or stripeToken/stripeCustomer fields are missing.
 	 */
 	public function testChargeInvalidData() {
 		$data = array();
@@ -112,9 +112,40 @@ class StripeComponentTest extends CakeTestCase {
 		)));
 		$data = array('amount' => 7.45, 'stripeToken' => $token->id);
 		$result = $this->StripeComponent->charge($data);
+		
 		$this->assertRegExp('/^ch\_[a-zA-Z0-9]+/', $result['stripe_id']);
 
 		$charge = Stripe_Charge::retrieve($result['stripe_id']);
+		$this->assertEquals($result['stripe_id'], $charge->id);
+		$data['amount'] = $data['amount'] * 100;
+		$this->assertEquals($data['amount'], $charge->amount);
+	}
+
+	public function testChargeCustomer() {
+		$this->StripeComponent->startup($this->Controller);
+
+		Stripe::setApiKey(Configure::read('Stripe.TestSecret'));
+		$token = Stripe_Token::create(array(
+			'card' => array(
+			'number' => '4242424242424242',
+			'exp_month' => 12,
+			'exp_year' => 2020,
+			'cvc' => 777,
+			'name' => 'Casi Robot',
+			'address_zip' => '91361'
+		)));
+		$customer = Stripe_Customer::create(array(
+			'card' => $token->id,
+			'description' => 'Casi Robot'
+		));
+		
+		$data = array('amount' => 1000, 'stripeCustomer' => $customer->id);
+		$result = $this->StripeComponent->charge($data);
+		
+		$this->assertRegExp('/^ch\_[a-zA-Z0-9]+/', $result['stripe_id']);
+
+		$charge = Stripe_Charge::retrieve($result['stripe_id']);
+		
 		$this->assertEquals($result['stripe_id'], $charge->id);
 		$data['amount'] = $data['amount'] * 100;
 		$this->assertEquals($data['amount'], $charge->amount);
@@ -190,7 +221,7 @@ class StripeComponentTest extends CakeTestCase {
 		);
 
 		$result = $this->StripeComponent->charge($data);
-		debug($result);
+		
 		$this->assertRegExp('/^ch\_[a-zA-Z0-9]+/', $result['stripe_id']);
 
 		$charge = Stripe_Charge::retrieve($result['stripe_id']);
@@ -308,7 +339,7 @@ class StripeComponentTest extends CakeTestCase {
 		);
 
 		$result = $this->StripeComponent->createCustomer($data);
-		debug($result);
+		
 		$this->assertRegExp('/^cus\_[a-zA-Z0-9]+/', $result['stripe_id']);
 
 		$customer = Stripe_Customer::retrieve($result['stripe_id']);
