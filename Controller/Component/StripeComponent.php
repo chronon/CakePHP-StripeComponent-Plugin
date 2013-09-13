@@ -87,7 +87,7 @@ class StripeComponent extends Component {
  * The charge method prepares data for Stripe_Charge::create and attempts a
  * transaction.
  *
- * @param array	$data Must contain 'amount' and 'stripeToken'.
+ * @param array	$data Must contain 'amount' and 'stripeToken' or 'stripeCustomer'.
  * @return array $charge if success, string $error if failure.
  * @throws CakeException
  * @throws CakeException
@@ -100,9 +100,9 @@ class StripeComponent extends Component {
 			throw new CakeException('Stripe API key is not set.');
 		}
 
-		// $data MUST contain 'amount' and 'stripeToken' to make a charge.
-		if (!isset($data['amount']) || !isset($data['stripeToken'])) {
-			throw new CakeException('The required amount or stripeToken fields are missing.');
+		// $data MUST contain 'amount' and 'stripeToken' or 'stripeCustomer' to make a charge.
+		if (!isset($data['amount']) || (!isset($data['stripeToken'])) && !isset($data['stripeCustomer'])) {
+			throw new CakeException('The required amount or stripeToken/stripeCustomer fields are missing.');
 		}
 
 		// if supplied amount is not numeric, abort.
@@ -121,12 +121,19 @@ class StripeComponent extends Component {
 		Stripe::setApiKey($key);
 		$error = null;
 		try {
-			$charge = Stripe_Charge::create(array(
+			$chargeData = array(
 				'amount' => $data['amount'],
 				'currency' => $this->currency,
-				'card' => $data['stripeToken'],
 				'description' => $data['description']
-			));
+			);
+			
+			if (isset($data['stripeToken'])) {
+				$chargeData['card'] = $data['stripeToken'];
+			} else {
+				$chargeData['customer'] = $data['stripeCustomer'];
+			}
+			
+			$charge = Stripe_Charge::create($chargeData);
 
 		} catch(Stripe_CardError $e) {
 			$body = $e->getJsonBody();
@@ -161,6 +168,76 @@ class StripeComponent extends Component {
 		CakeLog::info('Stripe: charge id ' . $charge->id, 'stripe');
 
 		return $this->_formatResult($charge);
+	}
+
+/**
+ * The createCustomer method prepares data for Stripe_Customer::create and attempts to
+ * create a customer.
+ *
+ * @param array	$data Must contain 'stripeToken'.
+ * @return array $customer if success, string $error if failure.
+ * @throws CakeException
+ * @throws CakeException
+ * @throws CakeException
+ */
+	public function createCustomer($data) {
+		// set the Stripe API key
+		$key = Configure::read('Stripe.' . $this->mode . 'Secret');
+		if (!$key) {
+			throw new CakeException('Stripe API key is not set.');
+		}
+		
+		// $data MUST contain 'stripeToken' to create customer.
+		if (!isset($data['stripeToken'])) {
+			throw new CakeException('The stripeToken field is missing.');
+		}
+
+		// set the (optional) description field to null if not set in $data
+		if (!isset($data['description'])) {
+			$data['description'] = null;
+		}
+
+		Stripe::setApiKey($key);
+		$error = null;
+		try {
+			$customer = Stripe_Customer::create(array(
+				'card' => $data['stripeToken'],
+				'description' => $data['description']
+			));
+
+		} catch(Stripe_CardError $e) {
+			$body = $e->getJsonBody();
+			$err = $body['error'];
+			CakeLog::error('Stripe: ' . $err['type'] . ': ' . $err['code'] . ': ' . $err['message'], 'stripe');
+			$error = $err['message'];
+
+		} catch (Stripe_InvalidRequestError $e) {
+			$body = $e->getJsonBody();
+			$err = $body['error'];
+			CakeLog::error('Stripe: ' . $err['type'] . ': ' . $err['message'], 'stripe');
+			$error = $err['message'];
+
+		} catch (Stripe_AuthenticationError $e) {
+			CakeLog::error('Stripe: API key rejected!', 'stripe');
+			$error = 'Payment processor API key error.';
+
+		} catch (Stripe_Error $e) {
+			CakeLog::error('Stripe: Stripe_Error - Stripe could be down.', 'stripe');
+			$error = 'Payment processor error, try again later.';
+
+		} catch (Exception $e) {
+			CakeLog::error('Stripe: Unknown error.', 'stripe');
+			$error = 'There was an error, try again later.';
+		}
+
+		if ($error !== null) {
+			// an error is always a string
+			return (string)$error;
+		}
+
+		CakeLog::info('Stripe: customer id ' . $customer->id, 'stripe');
+
+		return $this->_formatResult($customer);
 	}
 
 /**
