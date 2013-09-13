@@ -80,9 +80,9 @@ class StripeComponentTest extends CakeTestCase {
 	 * @expectedException CakeException
 	 * @expectedExceptionMessage Stripe API key is not set.
 	 */
-	public function testChargeNoApiKey() {
+	public function testStartupWithNoApiKey() {
 		Configure::write('Stripe.TestSecret', null);
-		$this->StripeComponent->charge(null);
+		$this->StripeComponent->startup($this->Controller);
 	}
 
 	/**
@@ -231,7 +231,13 @@ class StripeComponentTest extends CakeTestCase {
 		$this->assertContains('Invalid token id:', $result);
 	}
 
+
+	/**
+	 * @expectedException STRIPE_AUTHENTICATIONERROR
+	 * @expectedExceptionMessage Invalid API Key provided: *********
+	 */
 	public function testChargeAuthError() {
+		Configure::write('Stripe.TestSecret', '123456789');
 		$this->StripeComponent->startup($this->Controller);
 
 		Stripe::setApiKey(Configure::read('Stripe.TestSecret'));
@@ -242,11 +248,8 @@ class StripeComponentTest extends CakeTestCase {
 			"exp_year" => 2020,
 			"cvc" => 777
 		)));
-		Configure::write('Stripe.TestSecret', '123456789');
 		$data = array('amount' => 3.77, 'stripeToken' => $token->id);
 		$result = $this->StripeComponent->charge($data);
-		$this->assertInternalType('string', $result);
-		$this->assertEquals('Payment processor API key error.', $result);
 	}
 
 }

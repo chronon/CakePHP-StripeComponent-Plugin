@@ -46,6 +46,14 @@ class StripeComponent extends Component {
 	public $fields = array('stripe_id' => 'id');
 
 /**
+ * The required Stripe secret API key
+ *
+ * @var string
+ * @access public
+ */
+	public $key = null;
+
+/**
  * Controller startup. Loads the Stripe API library and sets options from
  * APP/Config/bootstrap.php.
  *
@@ -62,6 +70,12 @@ class StripeComponent extends Component {
 		);
 		if (!class_exists('Stripe')) {
 			throw new CakeException('Stripe API Libaray is missing or could not be loaded.');
+		}
+
+		// set the Stripe API key
+		$this->key = Configure::read('Stripe.' . $this->mode . 'Secret');
+		if (!$this->key) {
+			throw new CakeException('Stripe API key is not set.');
 		}
 
 		// if mode is set in bootstrap.php, use it. otherwise, Test.
@@ -94,11 +108,6 @@ class StripeComponent extends Component {
  * @throws CakeException
  */
 	public function charge($data) {
-		// set the Stripe API key
-		$key = Configure::read('Stripe.' . $this->mode . 'Secret');
-		if (!$key) {
-			throw new CakeException('Stripe API key is not set.');
-		}
 
 		// $data MUST contain 'amount' and 'stripeToken' to make a charge.
 		if (!isset($data['amount']) || !isset($data['stripeToken'])) {
@@ -118,7 +127,7 @@ class StripeComponent extends Component {
 		// format the amount, in cents.
 		$data['amount'] = $data['amount'] * 100;
 
-		Stripe::setApiKey($key);
+		Stripe::setApiKey($this->key);
 		$error = null;
 		try {
 			$charge = Stripe_Charge::create(array(
