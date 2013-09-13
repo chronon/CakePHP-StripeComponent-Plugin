@@ -87,7 +87,7 @@ class StripeComponentTest extends CakeTestCase {
 
 	/**
 	 * @expectedException CakeException
-	 * @expectedExceptionMessage The required amount or stripeToken fields are missing.
+	 * @expectedExceptionMessage The required stripeToken or stripeCustomer fields are missing.
 	 */
 	public function testChargeInvalidData() {
 		$data = array();
@@ -145,7 +145,28 @@ class StripeComponentTest extends CakeTestCase {
 
 	/**
 	 * @expectedException CakeException
-	 * @expectedExceptionMessage Amount must be numeric.
+	 * @expectedExceptionMessage Amount is required and must be numeric.
+	 */
+	public function testChargeMissingAmount() {
+		$this->StripeComponent->startup($this->Controller);
+
+		Stripe::setApiKey(Configure::read('Stripe.TestSecret'));
+		$token = Stripe_Token::create(array(
+			'card' => array(
+			'number' => '4242424242424242',
+			'exp_month' => 12,
+			'exp_year' => 2020,
+			'cvc' => 777,
+			'name' => 'Invalid Amount',
+			'address_zip' => '91361'
+		)));
+		$data = array('stripeToken' => $token->id);
+		$result = $this->StripeComponent->charge($data);
+	}
+
+	/**
+	 * @expectedException CakeException
+	 * @expectedExceptionMessage Amount is required and must be numeric.
 	 */
 	public function testChargeInvalidAmount() {
 		$this->StripeComponent->startup($this->Controller);
@@ -190,7 +211,6 @@ class StripeComponentTest extends CakeTestCase {
 		);
 
 		$result = $this->StripeComponent->charge($data);
-		debug($result);
 		$this->assertRegExp('/^ch\_[a-zA-Z0-9]+/', $result['stripe_id']);
 
 		$charge = Stripe_Charge::retrieve($result['stripe_id']);
@@ -250,6 +270,47 @@ class StripeComponentTest extends CakeTestCase {
 		)));
 		$data = array('amount' => 3.77, 'stripeToken' => $token->id);
 		$result = $this->StripeComponent->charge($data);
+	}
+
+	/**
+	 * @expectedException CakeException
+	 * @expectedExceptionMessage The required stripeToken field is missing.
+	 */
+	public function testCreateCustomerInvalidData() {
+		$this->StripeComponent->startup($this->Controller);
+		$data = array();
+		$result = $this->StripeComponent->createCustomer($data);
+	}
+
+	public function testCreateCustomerInvalidToken() {
+		$this->StripeComponent->startup($this->Controller);
+		$data = array('stripeToken' => '12345');
+		$result = $this->StripeComponent->createCustomer($data);
+		$this->assertContains('Invalid token id:', $result);
+	}
+
+	public function testCreateCustomer() {
+		$this->StripeComponent->startup($this->Controller);
+
+		Stripe::setApiKey(Configure::read('Stripe.TestSecret'));
+		$token = Stripe_Token::create(array(
+			'card' => array(
+			'number' => '4242424242424242',
+			'exp_month' => 12,
+			'exp_year' => 2020,
+			'cvc' => 777,
+			'name' => 'Casi Robot',
+			'address_zip' => '91361'
+		)));
+		$data = array(
+			'stripeToken' => $token->id,
+			'description' => 'casi@robot.com'
+		);
+		$result = $this->StripeComponent->createCustomer($data);
+		$this->assertRegExp('/^cus\_[a-zA-Z0-9]+/', $result['customer']);
+
+		$customer = Stripe_Customer::retrieve($result['customer']);
+		$this->assertEquals($result['customer'], $customer->id);
 	}
 
 }

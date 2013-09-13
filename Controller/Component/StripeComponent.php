@@ -105,18 +105,19 @@ class StripeComponent extends Component {
  * @return array $charge if success, string $error if failure.
  * @throws CakeException
  * @throws CakeException
- * @throws CakeException
+ * @throws Exception
+ * @throws Exception
  */
 	public function charge($data) {
 
-		// $data MUST contain 'amount' and 'stripeToken' to make a charge.
-		if (!isset($data['amount']) || !isset($data['stripeToken'])) {
-			throw new CakeException('The required amount or stripeToken fields are missing.');
+		// $data MUST contain 'stripeToken' or 'stripeCustomer' (id) to make a charge.
+		if (!isset($data['stripeToken']) && !isset($data['stripeCustomer'])) {
+			throw new CakeException('The required stripeToken or stripeCustomer fields are missing.');
 		}
 
-		// if supplied amount is not numeric, abort.
-		if (!is_numeric($data['amount'])) {
-			throw new CakeException('Amount must be numeric.');
+		// if amount is missing or not numeric, abort.
+		if (!isset($data['amount']) || !is_numeric($data['amount'])) {
+			throw new CakeException('Amount is required and must be numeric.');
 		}
 
 		// set the (optional) description field to null if not set in $data
@@ -129,36 +130,54 @@ class StripeComponent extends Component {
 
 		Stripe::setApiKey($this->key);
 		$error = null;
+
+		$chargeData = array(
+			'amount' => $data['amount'],
+			'currency' => $this->currency,
+			'description' => $data['description']
+		);
+
+		if (isset($data['stripeToken'])) {
+			$chargeData['card'] = $data['stripeToken'];
+		} else {
+			$chargeData['customer'] = $data['stripeCustomer'];
+		}
+
 		try {
-			$charge = Stripe_Charge::create(array(
-				'amount' => $data['amount'],
-				'currency' => $this->currency,
-				'card' => $data['stripeToken'],
-				'description' => $data['description']
-			));
+			$charge = Stripe_Charge::create($chargeData);
 
 		} catch(Stripe_CardError $e) {
 			$body = $e->getJsonBody();
 			$err = $body['error'];
-			CakeLog::error('Stripe: ' . $err['type'] . ': ' . $err['code'] . ': ' . $err['message'], 'stripe');
+			CakeLog::error(
+				'Charge::Stripe_CardError: ' . $err['type'] . ': ' . $err['code'] . ': ' . $err['message'],
+				'stripe'
+			);
 			$error = $err['message'];
 
 		} catch (Stripe_InvalidRequestError $e) {
 			$body = $e->getJsonBody();
 			$err = $body['error'];
-			CakeLog::error('Stripe: ' . $err['type'] . ': ' . $err['message'], 'stripe');
+			CakeLog::error(
+				'Charge::Stripe_InvalidRequestError: ' . $err['type'] . ': ' . $err['message'],
+				'stripe'
+			);
 			$error = $err['message'];
 
 		} catch (Stripe_AuthenticationError $e) {
-			CakeLog::error('Stripe: API key rejected!', 'stripe');
+			CakeLog::error('Charge::Stripe_AuthenticationError: API key rejected!', 'stripe');
 			$error = 'Payment processor API key error.';
 
+		} catch (Stripe_ApiConnectionError $e) {
+			CakeLog::error('Charge::Stripe_ApiConnectionError: Stripe could not be reached.', 'stripe');
+			$error = 'Network communication with payment processor failed, try again later';
+
 		} catch (Stripe_Error $e) {
-			CakeLog::error('Stripe: Stripe_Error - Stripe could be down.', 'stripe');
+			CakeLog::error('Charge::Stripe_Error: Stripe could be down.', 'stripe');
 			$error = 'Payment processor error, try again later.';
 
 		} catch (Exception $e) {
-			CakeLog::error('Stripe: Unknown error.', 'stripe');
+			CakeLog::error('Charge::Exception: Unknown error.', 'stripe');
 			$error = 'There was an error, try again later.';
 		}
 
@@ -169,7 +188,73 @@ class StripeComponent extends Component {
 
 		CakeLog::info('Stripe: charge id ' . $charge->id, 'stripe');
 
-		return $this->_formatResult($charge);
+		return $this->_formatChargeResult($charge);
+	}
+
+/**
+ * The createCustomer method prepares data for Stripe_Customer::create and attempts to
+ * create a customer.
+ *
+ * @param array	$data Must contain 'stripeToken'.
+ * @return array $customer if success, string $error if failure.
+ * @throws CakeException
+ * @throws Exception
+ */
+	public function createCustomer($data) {
+
+		// $data MUST contain 'stripeToken' to create customer.
+		if (!isset($data['stripeToken'])) {
+			throw new CakeException('The required stripeToken field is missing.');
+		}
+
+		// set the (optional) description field to null if not set in $data
+		if (!isset($data['description'])) {
+			$data['description'] = null;
+		}
+
+		Stripe::setApiKey($this->key);
+		$error = null;
+
+		try {
+			$customer = Stripe_Customer::create(array(
+				'card' => $data['stripeToken'],
+				'description' => $data['description']
+			));
+
+		} catch (Stripe_InvalidRequestError $e) {
+			$body = $e->getJsonBody();
+			$err = $body['error'];
+			CakeLog::error(
+				'Customer::Stripe_InvalidRequestError: ' . $err['type'] . ': ' . $err['message'],
+				'stripe'
+			);
+			$error = $err['message'];
+
+		} catch (Stripe_AuthenticationError $e) {
+			CakeLog::error('Customer::Stripe_AuthenticationError: API key rejected!', 'stripe');
+			$error = 'Payment processor API key error.';
+
+		} catch (Stripe_ApiConnectionError $e) {
+			CakeLog::error('Customer::Stripe_ApiConnectionError: Stripe could not be reached.', 'stripe');
+			$error = 'Network communication with payment processor failed, try again later';
+
+		} catch (Stripe_Error $e) {
+			CakeLog::error('Customer::Stripe_Error: Stripe could be down.', 'stripe');
+			$error = 'Payment processor error, try again later.';
+
+		} catch (Exception $e) {
+			CakeLog::error('Customer::Exception: Unknown error.', 'stripe');
+			$error = 'There was an error, try again later.';
+		}
+
+		if ($error !== null) {
+			// an error is always a string
+			return (string)$error;
+		}
+
+		CakeLog::info('Customer: customer id ' . $customer->id, 'stripe');
+
+		return array('customer' => $customer->id);
 	}
 
 /**
@@ -179,7 +264,7 @@ class StripeComponent extends Component {
  * @param object $charge A successful charge object.
  * @return array The desired fields from the charge object as an array.
  */
-	protected function _formatResult($charge) {
+	protected function _formatChargeResult($charge) {
 		$result = array();
 		foreach ($this->fields as $local => $stripe) {
 			if (is_array($stripe)) {
