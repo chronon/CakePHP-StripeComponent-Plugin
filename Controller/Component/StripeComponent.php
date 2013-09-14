@@ -192,7 +192,7 @@ class StripeComponent extends Component {
 	}
 
 /**
- * The createCustomer method prepares data for Stripe_Customer::create and attempts to
+ * The customerCreate method prepares data for Stripe_Customer::create and attempts to
  * create a customer.
  *
  * @param array	$data Must contain 'stripeToken'.
@@ -200,7 +200,7 @@ class StripeComponent extends Component {
  * @throws CakeException
  * @throws Exception
  */
-	public function createCustomer($data) {
+	public function customerCreate($data) {
 
 		// $data MUST contain 'stripeToken' to create customer.
 		if (!isset($data['stripeToken'])) {

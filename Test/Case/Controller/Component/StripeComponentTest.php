@@ -316,13 +316,13 @@ class StripeComponentTest extends CakeTestCase {
 	public function testCreateCustomerInvalidData() {
 		$this->StripeComponent->startup($this->Controller);
 		$data = array();
-		$result = $this->StripeComponent->createCustomer($data);
+		$result = $this->StripeComponent->customerCreate($data);
 	}
 
 	public function testCreateCustomerInvalidToken() {
 		$this->StripeComponent->startup($this->Controller);
 		$data = array('stripeToken' => '12345');
-		$result = $this->StripeComponent->createCustomer($data);
+		$result = $this->StripeComponent->customerCreate($data);
 		$this->assertContains('Invalid token id:', $result);
 	}
 
@@ -343,7 +343,7 @@ class StripeComponentTest extends CakeTestCase {
 			'stripeToken' => $token->id,
 			'description' => 'casi@robot.com'
 		);
-		$result = $this->StripeComponent->createCustomer($data);
+		$result = $this->StripeComponent->customerCreate($data);
 		$this->assertRegExp('/^cus\_[a-zA-Z0-9]+/', $result['stripe_id']);
 
 		$customer = Stripe_Customer::retrieve($result['stripe_id']);
@@ -376,7 +376,7 @@ class StripeComponentTest extends CakeTestCase {
 			'description' => 'A Test!',
 			'email' => 'casi@robot.com'
 		);
-		$result = $this->StripeComponent->createCustomer($data);
+		$result = $this->StripeComponent->customerCreate($data);
 		$this->assertRegExp('/^cus\_[a-zA-Z0-9]+/', $result['customer_id']);
 
 		$customer = Stripe_Customer::retrieve($result['customer_id']);
@@ -408,7 +408,7 @@ class StripeComponentTest extends CakeTestCase {
 			'description' => 'A Test!',
 			'email' => 'casi@robot.com'
 		);
-		$result = $this->StripeComponent->createCustomer($data);
+		$result = $this->StripeComponent->customerCreate($data);
 		$this->assertRegExp('/^cus\_[a-zA-Z0-9]+/', $result['stripe_id']);
 
 		$customer = Stripe_Customer::retrieve($result['stripe_id']);
@@ -436,7 +436,7 @@ class StripeComponentTest extends CakeTestCase {
 			'description' => 'Create Customer & Charge',
 			'email' => 'casi@robot.com',
 		);
-		$result = $this->StripeComponent->createCustomer($data);
+		$result = $this->StripeComponent->customerCreate($data);
 		$this->assertRegExp('/^cus\_[a-zA-Z0-9]+/', $result['stripe_id']);
 
 		$customer = Stripe_Customer::retrieve($result['stripe_id']);
@@ -487,7 +487,7 @@ class StripeComponentTest extends CakeTestCase {
 			'description' => 'Create Customer & Subscribe to Plan',
 			'email' => 'casi@robot.com',
 		);
-		$result = $this->StripeComponent->createCustomer($data);
+		$result = $this->StripeComponent->customerCreate($data);
 		$this->assertRegExp('/^cus\_[a-zA-Z0-9]+/', $result['stripe_id']);
 
 		$customer = Stripe_Customer::retrieve($result['stripe_id']);
