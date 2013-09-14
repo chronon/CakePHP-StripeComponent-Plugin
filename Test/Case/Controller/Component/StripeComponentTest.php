@@ -501,4 +501,45 @@ class StripeComponentTest extends CakeTestCase {
 		$customer->delete();
 	}
 
+	public function testCustomerRetrieveAndUpdate() {
+		$this->StripeComponent->startup($this->Controller);
+		Stripe::setApiKey(Configure::read('Stripe.TestSecret'));
+
+		$token = Stripe_Token::create(array(
+			'card' => array(
+			'number' => '4242424242424242',
+			'exp_month' => 12,
+			'exp_year' => 2020,
+			'cvc' => 777,
+			'name' => 'Casi Robot',
+			'address_zip' => '91361'
+		)));
+		$data = array(
+			'stripeToken' => $token->id,
+			'description' => 'Original Description',
+			'email' => 'casi@robot.com',
+		);
+		$result = $this->StripeComponent->customerCreate($data);
+		$this->assertRegExp('/^cus\_[a-zA-Z0-9]+/', $result['stripe_id']);
+
+		$customer = $this->StripeComponent->customerRetrieve($result['stripe_id']);
+		$this->assertEquals($result['stripe_id'], $customer->id);
+
+		$customer->description = 'An updated description';
+		$customer->save();
+
+		$customer = $this->StripeComponent->customerRetrieve($result['stripe_id']);
+		$this->assertEquals('An updated description', $customer->description);
+
+		$customer->delete();
+	}
+
+	public function testCustomerRetrieveNotFound() {
+		$this->StripeComponent->startup($this->Controller);
+		Stripe::setApiKey(Configure::read('Stripe.TestSecret'));
+
+		$customer = $this->StripeComponent->customerRetrieve('invalid');
+		$this->assertFalse($customer);
+	}
+
 }

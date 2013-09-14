@@ -60,6 +60,7 @@ class StripeComponent extends Component {
  * @param Controller $controller Instantiating controller
  * @return void
  * @throws CakeException
+ * @throws CakeException
  */
 	public function startup(Controller $controller) {
 		$this->Controller = $controller;
@@ -105,8 +106,6 @@ class StripeComponent extends Component {
  * @return array $charge if success, string $error if failure.
  * @throws CakeException
  * @throws CakeException
- * @throws Exception
- * @throws Exception
  */
 	public function charge($data) {
 
@@ -198,7 +197,6 @@ class StripeComponent extends Component {
  * @param array	$data Must contain 'stripeToken'.
  * @return array $customer if success, string $error if failure.
  * @throws CakeException
- * @throws Exception
  */
 	public function customerCreate($data) {
 
@@ -267,6 +265,25 @@ class StripeComponent extends Component {
 		CakeLog::info('Customer: customer id ' . $customer->id, 'stripe');
 
 		return $this->_formatResult($customer);
+	}
+
+/**
+ * The customerRetrieve method gets a customer object for viewing, updating, or
+ * deleting.
+ *
+ * @param string $id Must be an existing customer id.
+ * @return object $customer if success, boolean false if failure or not found.
+ */
+	public function customerRetrieve($id) {
+		Stripe::setApiKey($this->key);
+		$customer = false;
+
+		try {
+			$customer = Stripe_Customer::retrieve($id);
+		} catch (Exception $e) {
+			return false;
+		}
+		return $customer;
 	}
 
 /**
