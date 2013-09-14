@@ -188,7 +188,7 @@ class StripeComponent extends Component {
 
 		CakeLog::info('Stripe: charge id ' . $charge->id, 'stripe');
 
-		return $this->_formatChargeResult($charge);
+		return $this->_formatResult($charge);
 	}
 
 /**
@@ -212,13 +212,19 @@ class StripeComponent extends Component {
 			$data['description'] = null;
 		}
 
+		// set the (optional) email field to null if not set in $data
+		if (!isset($data['email'])) {
+			$data['email'] = null;
+		}
+
 		Stripe::setApiKey($this->key);
 		$error = null;
 
 		try {
 			$customer = Stripe_Customer::create(array(
 				'card' => $data['stripeToken'],
-				'description' => $data['description']
+				'description' => $data['description'],
+				'email' => $data['email']
 			));
 
 		} catch (Stripe_InvalidRequestError $e) {
@@ -254,26 +260,34 @@ class StripeComponent extends Component {
 
 		CakeLog::info('Customer: customer id ' . $customer->id, 'stripe');
 
-		return array('customer' => $customer->id);
+		return $this->_formatResult($customer);
 	}
 
 /**
- * Returns an array of fields we want from Stripe's charge object
+ * Returns an array of fields we want from Stripe's response objects
  *
  *
- * @param object $charge A successful charge object.
- * @return array The desired fields from the charge object as an array.
+ * @param object $response A successful response object from this component.
+ * @return array The desired fields from the response object as an array.
  */
-	protected function _formatChargeResult($charge) {
+	protected function _formatResult($response) {
 		$result = array();
 		foreach ($this->fields as $local => $stripe) {
 			if (is_array($stripe)) {
 				foreach ($stripe as $obj => $field) {
-					$result[$local] = $charge->$obj->$field;
+					if (isset($response->$obj->$field)) {
+						$result[$local] = $response->$obj->$field;
+					}
 				}
 			} else {
-				$result[$local] = $charge->$stripe;
+				if (isset($response->$stripe)) {
+					$result[$local] = $response->$stripe;
+				}
 			}
+		}
+		// if no local fields match, return the default stripe_id
+		if (empty($result)) {
+			$result['stripe_id'] = $response->id;
 		}
 		return $result;
 	}
