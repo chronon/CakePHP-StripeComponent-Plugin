@@ -311,6 +311,7 @@ class StripeComponentTest extends CakeTestCase {
 
 		$customer = Stripe_Customer::retrieve($result['customer']);
 		$this->assertEquals($result['customer'], $customer->id);
+		$customer->delete();
 	}
 
 }
