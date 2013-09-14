@@ -457,4 +457,48 @@ class StripeComponentTest extends CakeTestCase {
 		$customer->delete();
 	}
 
+	public function testCreateCustomerAndSubscribeToPlan() {
+		$this->StripeComponent->startup($this->Controller);
+
+		Stripe::setApiKey(Configure::read('Stripe.TestSecret'));
+
+		// create a plan for this test
+		Stripe_Plan::create(array(
+			'amount' => 2000,
+			'interval' => "month",
+			'name' => "Test Plan",
+			'currency' => 'usd',
+			'id' => 'testplan')
+		);
+
+		Stripe::setApiKey(Configure::read('Stripe.TestSecret'));
+		$token = Stripe_Token::create(array(
+			'card' => array(
+			'number' => '4242424242424242',
+			'exp_month' => 12,
+			'exp_year' => 2020,
+			'cvc' => 777,
+			'name' => 'Casi Robot',
+			'address_zip' => '91361'
+		)));
+		$data = array(
+			'stripeToken' => $token->id,
+			'plan' => 'testplan',
+			'description' => 'Create Customer & Subscribe to Plan',
+			'email' => 'casi@robot.com',
+		);
+		$result = $this->StripeComponent->createCustomer($data);
+		$this->assertRegExp('/^cus\_[a-zA-Z0-9]+/', $result['stripe_id']);
+
+		$customer = Stripe_Customer::retrieve($result['stripe_id']);
+		$this->assertEquals($result['stripe_id'], $customer->id);
+		$this->assertEquals($data['plan'], $customer->subscription->plan->id);
+
+		// delete the plan
+		$plan = Stripe_Plan::retrieve('testplan');
+		$plan->delete();
+
+		$customer->delete();
+	}
+
 }

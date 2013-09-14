@@ -217,12 +217,18 @@ class StripeComponent extends Component {
 			$data['email'] = null;
 		}
 
+		// set the (optional) plan field to null if not set in $data
+		if (!isset($data['plan'])) {
+			$data['plan'] = null;
+		}
+
 		Stripe::setApiKey($this->key);
 		$error = null;
 
 		try {
 			$customer = Stripe_Customer::create(array(
 				'card' => $data['stripeToken'],
+				'plan' => $data['plan'],
 				'description' => $data['description'],
 				'email' => $data['email']
 			));
