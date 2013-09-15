@@ -231,6 +231,15 @@ class StripeComponent extends Component {
 				'email' => $data['email']
 			));
 
+		} catch(Stripe_CardError $e) {
+			$body = $e->getJsonBody();
+			$err = $body['error'];
+			CakeLog::error(
+				'Customer::Stripe_CardError: ' . $err['type'] . ': ' . $err['code'] . ': ' . $err['message'],
+				'stripe'
+			);
+			$error = $err['message'];
+
 		} catch (Stripe_InvalidRequestError $e) {
 			$body = $e->getJsonBody();
 			$err = $body['error'];
