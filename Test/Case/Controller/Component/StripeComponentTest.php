@@ -309,16 +309,6 @@ class StripeComponentTest extends CakeTestCase {
 		$result = $this->StripeComponent->charge($data);
 	}
 
-	/**
-	 * @expectedException CakeException
-	 * @expectedExceptionMessage The required stripeToken field is missing.
-	 */
-	public function testCreateCustomerInvalidData() {
-		$this->StripeComponent->startup($this->Controller);
-		$data = array();
-		$result = $this->StripeComponent->customerCreate($data);
-	}
-
 	public function testCreateCustomerInvalidToken() {
 		$this->StripeComponent->startup($this->Controller);
 		$data = array('stripeToken' => '12345');

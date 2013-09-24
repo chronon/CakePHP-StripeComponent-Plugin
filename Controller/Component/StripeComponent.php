@@ -124,6 +124,11 @@ class StripeComponent extends Component {
 			$data['description'] = null;
 		}
 
+		// set the (optional) capture field to null if not set in $data
+		if (!isset($data['capture'])) {
+			$data['capture'] = null;
+		}
+
 		// format the amount, in cents.
 		$data['amount'] = $data['amount'] * 100;
 
@@ -133,7 +138,8 @@ class StripeComponent extends Component {
 		$chargeData = array(
 			'amount' => $data['amount'],
 			'currency' => $this->currency,
-			'description' => $data['description']
+			'description' => $data['description'],
+			'capture' => $data['capture']
 		);
 
 		if (isset($data['stripeToken'])) {
@@ -194,42 +200,22 @@ class StripeComponent extends Component {
  * The customerCreate method prepares data for Stripe_Customer::create and attempts to
  * create a customer.
  *
- * @param array	$data Must contain 'stripeToken'.
+ * @param array	$data The data passed directly to Stripe's API.
  * @return array $customer if success, string $error if failure.
- * @throws CakeException
  */
 	public function customerCreate($data) {
 
-		// $data MUST contain 'stripeToken' to create customer.
-		if (!isset($data['stripeToken'])) {
-			throw new CakeException('The required stripeToken field is missing.');
-		}
-
-		// set the (optional) description field to null if not set in $data
-		if (!isset($data['description'])) {
-			$data['description'] = null;
-		}
-
-		// set the (optional) email field to null if not set in $data
-		if (!isset($data['email'])) {
-			$data['email'] = null;
-		}
-
-		// set the (optional) plan field to null if not set in $data
-		if (!isset($data['plan'])) {
-			$data['plan'] = null;
+		// for API compatibility with version 1.x of this component
+		if (isset($data['stripeToken'])) {
+			$data['card'] = $data['stripeToken'];
+			unset($data['stripeToken']);
 		}
 
 		Stripe::setApiKey($this->key);
 		$error = null;
 
 		try {
-			$customer = Stripe_Customer::create(array(
-				'card' => $data['stripeToken'],
-				'plan' => $data['plan'],
-				'description' => $data['description'],
-				'email' => $data['email']
-			));
+			$customer = Stripe_Customer::create($data);
 
 		} catch(Stripe_CardError $e) {
 			$body = $e->getJsonBody();
