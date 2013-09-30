@@ -1,14 +1,17 @@
-CakePHP Stripe Payment Processing Component
-===========================================
+CakePHP Stripe Component
+========================
 
 This is a simple component that interfaces a CakePHP app with Stripe's PHP API library. Pass the
 component an array containing at least an amount and a Stripe token id, it will attempt the charge
 and return an array of the fields you want. 
 
+Version 2 adds the ability to create and retrieve customers, optionally subscribing them to
+a recurring payment plan or just charging them. 
+
 Compatibility:
 --------------
 
-Tested with CakePHP 2.2.x and 2.3.x. The required Stripe PHP API library requires PHP 5 with cURL 
+Tested with CakePHP 2.2.x, 2.3.x, and 2.4.x. The required Stripe PHP API library requires PHP 5 with cURL 
 support.
 
 Installation:
@@ -29,7 +32,7 @@ In your project `composer.json` file:
 }
 ```
 
-This will install the plugin into `Plugin/MobileDetect`, and install the Stripe library 
+This will install the plugin into `Plugin/Stripe`, and install the Stripe library 
 (from Packagist) into your `Vendor` directory.
 
 In your app's `Config/bootstrap.php`, import composer's autoload file:
@@ -54,7 +57,11 @@ All configuration is in APP/Config/bootstrap.php.
 
 **Required:** Load the plugin:
 	
-	CakePlugin::load('Stripe', array('bootstrap' => false, 'routes' => false));
+	CakePlugin::load('Stripe');
+
+or load all plugins:
+
+	CakePlugin::loadAll();
 
 **Required:** Set your Stripe secret API keys (both testing and live):
 
@@ -91,28 +98,36 @@ See Usage below if `Stripe.fields` is confusing.
 		'file' => 'stripe',
 	));
 
-Usage:
-------
+Making a Charge:
+----------------
 
 Make a payment form however you want, see the [Stripe docs](https://stripe.com/docs/tutorials/forms)
-for sample code. Add the component to your controller:
+for sample code or use Stripe's excellent [checkout](https://stripe.com/docs/checkout) button. Add 
+the component to your controller:
 
 	public $components = array(
 		'Stripe.Stripe'
 	);
 
-Format your form data so you can send the component an array containing at least:
+Format your form data so you can send the component an array containing at least an amount, a Stripe 
+token (with key `stripeToken`), or a Stripe customer id (with key `stripeCustomer`):
 
 	$data = array(
 		'amount' => '7.59',
-		'stripeToken' => 'tok_0NAEASV7h0m7ny'
+		'stripeToken' => 'tok_0NAEASV7h0m7ny', // either the token
+		'stripeCustomer' => 'cus_2x62nI9WxHsL37' // or the customer id, not both.
 	);
 
-Optionally you can include a `description` field as well, which according to Stripe docs is:
+Optionally you can include a `description` key (default is null):
 
 > An arbitrary string which you can attach to a charge object. It is displayed when in the web 
 > interface alongside the charge. It's often a good idea to use an email address as a description 
 > for tracking later.
+
+Optionally you can include a `capture` key set to true or false (default is true):
+
+> Whether or not to immediately capture the charge. When false, the charge issues an authorization 
+> (or pre-authorization), and will need to be captured later. Uncaptured charges expire in 7 days.
 
 For example:
 
@@ -122,7 +137,7 @@ For example:
 		'description' => 'Casi Robot - casi@robot.com'
 	);
 
-**Attempt a charge:** `$result = $this->Stripe->charge($data);`
+	$result = $this->Stripe->charge($data);
 
 If the charge was successful, `$result` will be an **array** as described by the configuration value 
 of `Stripe.fields`. If `Stripe.fields` is not set:
@@ -144,3 +159,78 @@ give you:
 
 If the charge was not successful, `$result` will be a **string** containing an error message, and 
 log the error.
+
+Creating a Customer:
+--------------------
+
+Creating a customer with a card attached can be used for recurring billing/subscriptions, or can be
+charged immediately.
+
+	$data = array(
+		'stripeToken' => 'tok_0NAEASV7h0m7ny',
+		'description' => 'Casi Robot - casi@robot.com'
+	);
+
+	$result = $this->StripeComponent->customerCreate($data);
+
+If creating the customer was **successful**, `$result` will be an **array** as described by the 
+configuration value of `Stripe.fields`. If `Stripe.fields` is not set:
+
+	$result = array(
+		'stripe_id' => 'cus_2x62nI9WxHsL37'
+	);
+
+If creating the customer was **not successful**, `$result` will be a **string** containing an error message, and 
+log the error.
+
+You can pass the `customerCreate()` method any valid keys/data as described by Stripe's API for
+creating a customer. [See the API reference](https://stripe.com/docs/api#create_customer) for the
+list. A customer can be created without a card, but obviously can't be charged or subscribed until
+a card is attached. 
+
+Example: to create a customer and subscribe them to a [plan](https://stripe.com/docs/api#plans)
+in one step, you could do something like this:
+
+	$data = array(
+		'stripeToken' => 'tok_0NAEASV7h0m7ny',
+		'description' => 'Casi Robot',
+		'email' => 'casi@robot.com',
+		'plan' => 'Silver Plan Deluxe'
+	);
+
+	$result = $this->StripeComponent->customerCreate($data);
+
+Retrieving a Customer:
+----------------------
+
+Once a customer has been created, you can retrieve the customer object easily with the customer id.
+
+	$customer = $this->StripeComponent->customerRetrieve('cus_2x62nI9WxHsL37');
+
+Once you have the `$customer` object you can [update](https://stripe.com/docs/api#update_customer)
+and [delete](https://stripe.com/docs/api#delete_customer) as needed. For example, to change the
+email address of an existing customer:
+
+	$customer = $this->StripeComponent->customerRetrieve('cus_2x62nI9WxHsL37');
+	$customer->email = 'new@address.com';
+	$customer->save();
+
+Retrieve and charge a customer:
+
+	$customer = $this->StripeComponent->customerRetrieve('cus_2x62nI9WxHsL37');
+	$chargeData = array(
+		'amount' => '14.69',
+		'stripeCustomer' => $customer['stripe_id']
+	);
+	$charge = $this->StripeComponent->charge($chargeData);
+
+Retrieve and update a customer's card with a token:
+
+	$customer = $this->StripeComponent->customerRetrieve('cus_2x62nI9WxHsL37');
+	$customer->card = $this->request->data['stripeToken'];
+	$customer->save();
+
+Contributors:
+-------------
+
+@louisroy
