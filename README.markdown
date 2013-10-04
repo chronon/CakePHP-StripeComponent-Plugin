@@ -24,7 +24,7 @@ In your project `composer.json` file:
 ```json
 {
 	"require": {
-		"chronon/stripe": "*"
+		"chronon/stripe": "dev-master"
 	},
 	"config": {
         "vendor-dir": "Vendor"
