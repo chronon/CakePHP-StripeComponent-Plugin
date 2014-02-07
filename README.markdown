@@ -47,6 +47,10 @@ You will need the component (packaged as a plugin), and [Stripe's PHP library](h
 Using git you can add this plugin and the required Stripe library (as a git submodule). From your 
 APP root (where you see your Model, Controller, Plugin, etc. directories) run:
 
+	git clone --recursive git@github.com:chronon/CakePHP-StripeComponent-Plugin.git Plugin/Stripe
+
+**OR**
+
 	git clone --recursive https://github.com/chronon/CakePHP-StripeComponent-Plugin.git Plugin/Stripe
 
 Configuration:
