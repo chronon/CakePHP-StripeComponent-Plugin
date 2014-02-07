@@ -43,11 +43,11 @@ App::import('Vendor', array('file' => 'autoload'));
 ```
 **Using git:**
 
-You will need the component (packaged as a plugin), and Stripe's PHP library (not included). The
-Stripe library needs to be in this plugin's Vendor directory and must be named 'Stripe'. Using git
-you can add the Stripe library as a submodule:
+You will need the component (packaged as a plugin), and [Stripe's PHP library](https://github.com/stripe/stripe-php). The Stripe library needs to be in this plugin's Vendor directory and must be named 'Stripe'. 
+Using git you can add this plugin and the required Stripe library (as a git submodule). From your 
+APP root (where you see your Model, Controller, Plugin, etc. directories) run:
 
-	git clone --recursive https://github.com/chronon/CakePHP-StripeComponent-Plugin.git 
+	git clone --recursive https://github.com/chronon/CakePHP-StripeComponent-Plugin.git Plugin/Stripe
 
 Configuration:
 --------------
