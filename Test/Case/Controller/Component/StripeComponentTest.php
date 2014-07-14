@@ -291,7 +291,7 @@ class StripeComponentTest extends CakeTestCase {
 
 	/**
 	 * @expectedException STRIPE_AUTHENTICATIONERROR
-	 * @expectedExceptionMessage Invalid API Key provided: *********
+	 * @expectedExceptionMessage Invalid API Key provided
 	 */
 	public function testChargeAuthError() {
 		Configure::write('Stripe.TestSecret', '123456789');
