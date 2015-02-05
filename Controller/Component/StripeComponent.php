@@ -70,7 +70,7 @@ class StripeComponent extends Component {
 			'file' => 'Stripe' . DS . 'lib' . DS . 'Stripe.php')
 		);
 		if (!class_exists('Stripe')) {
-			throw new CakeException('Stripe API Libaray is missing or could not be loaded.');
+			throw new CakeException('Stripe API library is missing or could not be loaded.');
 		}
 
 		// if mode is set in bootstrap.php, use it. otherwise, Test.
