@@ -1,0 +1,59 @@
+{
+  "id": "ch_15WD8y2eZvKYlo2C4lNr8vmr",
+  "object": "charge",
+  "created": 1423948084,
+  "livemode": false,
+  "paid": true,
+  "amount": 123,
+  "currency": "usd",
+  "refunded": false,
+  "captured": true,
+  "card": {
+    "id": "card_15WD8x2eZvKYlo2CdRyPkCJg",
+    "object": "card",
+    "last4": "4242",
+    "brand": "Visa",
+    "funding": "credit",
+    "exp_month": 12,
+    "exp_year": 2016,
+    "fingerprint": "Xt5EWLLDS7FJjR1c",
+    "country": "US",
+    "name": null,
+    "address_line1": null,
+    "address_line2": null,
+    "address_city": null,
+    "address_state": null,
+    "address_zip": null,
+    "address_country": null,
+    "cvc_check": "pass",
+    "address_line1_check": null,
+    "address_zip_check": null,
+    "dynamic_last4": null,
+    "customer": null
+  },
+  "balance_transaction": "txn_15TsO22eZvKYlo2CL0n8fmEA",
+  "failure_message": null,
+  "failure_code": null,
+  "amount_refunded": 0,
+  "customer": null,
+  "invoice": null,
+  "description": "Charge for test@example.com",
+  "dispute": null,
+  "metadata": {
+  },
+  "statement_descriptor": null,
+  "fraud_details": {
+  },
+  "receipt_email": null,
+  "receipt_number": null,
+  "shipping": null,
+  "refunds": {
+    "object": "list",
+    "total_count": 0,
+    "has_more": false,
+    "url": "/v1/charges/ch_15WD8y2eZvKYlo2C4lNr8vmr/refunds",
+    "data": [
+
+    ]
+  }
+}

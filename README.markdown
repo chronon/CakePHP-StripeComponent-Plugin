@@ -271,4 +271,4 @@ $customer->save();
 Contributors:
 -------------
 
-@louisroy
+@louisroy, @PhantomWatson
