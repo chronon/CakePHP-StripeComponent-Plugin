@@ -135,12 +135,29 @@ class StripeComponent extends Component {
 		Stripe::setApiKey($this->key);
 		$error = null;
 
-		$chargeData = array(
-			'amount' => $data['amount'],
-			'currency' => $this->currency,
-			'description' => $data['description'],
-			'capture' => $data['capture']
+		$chargeData = array();
+		$validParams = array(
+			'amount',
+			'currency',
+			'customer',
+			'card',
+			'description',
+			'metadata',
+			'capture',
+			'statement_descriptor',
+			'receipt_email',
+			'application_fee',
+			'shipping'
 		);
+		foreach ($validParams as $param) {
+			if (isset($data[$param])) {
+				$chargeData[$param] = $data[$param];
+			}
+		}
+
+		if (! isset($chargeData['currency'])) {
+			$chargeData['currency'] = $this->currency;
+		}
 
 		if (isset($data['stripeToken'])) {
 			$chargeData['card'] = $data['stripeToken'];
