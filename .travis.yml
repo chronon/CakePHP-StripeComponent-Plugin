@@ -1,0 +1,88 @@
+language: php
+
+php:
+  # - 5.4
+  - 5.5
+
+env:
+  # - CAKE_VERSION=2.3.10 DB=mysql
+  # - CAKE_VERSION=2.4.10 DB=mysql
+  # - CAKE_VERSION=2.5.8 DB=mysql
+  - CAKE_VERSION=2.6.1 DB=mysql
+  # - CAKE_VERSION=master DB=mysql
+
+install:
+  - git clone git://github.com/cakephp/cakephp ../cakephp && cd ../cakephp && git checkout $CAKE_VERSION
+  - cp -R ../CakePHP-StripeComponent-Plugin plugins/Stripe
+  - chmod -R 777 ../cakephp/app/tmp
+  # - sh -c "composer install"
+  - sh -c "composer global require 'phpunit/phpunit=3.7.33'"
+  - sh -c "ln -s ~/.composer/vendor/phpunit/phpunit/PHPUnit ../cakephp/vendors/PHPUnit"
+
+branches:
+  only:
+    - travis
+
+before_script:
+  - phpenv rehash
+  - sh -c "if [ '$DB' = 'mysql' ]; then mysql -e 'CREATE DATABASE cakephp_test;'; fi"
+  - set +H
+  - echo "<?php
+    class DATABASE_CONFIG {
+    private \$identities = array(
+      'mysql' => array(
+        'datasource' => 'Database/Mysql',
+        'host' => '0.0.0.0',
+        'login' => 'travis'
+      ),
+    );
+    public \$default = array(
+      'persistent' => false,
+      'host' => '',
+      'login' => '',
+      'password' => '',
+      'database' => 'cakephp_test',
+      'prefix' => ''
+    );
+    public \$test = array(
+      'persistent' => false,
+      'host' => '',
+      'login' => '',
+      'password' => '',
+      'database' => 'cakephp_test',
+      'prefix' => ''
+    );
+    public function __construct() {
+      \$db = 'mysql';
+      if (!empty(\$_SERVER['DB'])) {
+        \$db = \$_SERVER['DB'];
+      }
+      foreach (array('default', 'test') as \$source) {
+        \$config = array_merge(\$this->{\$source}, \$this->identities[\$db]);
+        if (is_array(\$config['database'])) {
+          \$config['database'] = \$config['database'][\$source];
+        }
+        if (!empty(\$config['schema']) && is_array(\$config['schema'])) {
+          \$config['schema'] = \$config['schema'][\$source];
+        }
+        \$this->{\$source} = \$config;
+      }
+    }
+    }" > ../cakephp/app/Config/database.php
+
+script:
+  - ./lib/Cake/Console/cake test Stripe Controller/Component/StripeComponent --stderr
+
+
+# After a Successful Build
+after_success:
+
+# After a Failed Build
+after_failure:
+
+# After every Build
+after_script:
+
+# Notifications Settings
+notifications:
+  email: false
