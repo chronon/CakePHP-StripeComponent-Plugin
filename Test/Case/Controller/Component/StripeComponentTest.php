@@ -5,6 +5,12 @@ App::uses('CakeResponse', 'Network');
 App::uses('ComponentCollection', 'Controller');
 App::uses('StripeComponent', 'Stripe.Controller/Component');
 
+
+/**
+ * The following `Stripe` classes mock static function calls used in the
+ * StripeComponent. 
+ *
+ */
 class Stripe {
 	public static function setApiKey($key) {
 		return true;
@@ -15,6 +21,7 @@ class Stripe_Charge {
 	public static function path() {
 		return APP . 'Plugin' . DS . 'Stripe' . DS . 'Test' . DS . 'Fixture' . DS;
 	}
+
 	public static function create($data) {
 		if ($data['card'] == 'cardError') {
 			throw new Stripe_CardError;
@@ -22,13 +29,70 @@ class Stripe_Charge {
 		if ($data['card'] == 'invalidRequestError') {
 			throw new Stripe_InvalidRequestError;
 		}
-		$response = self::response('StripeChargeCreate');
+		if ($data['card'] == 'authenticationError') {
+			throw new Stripe_AuthenticationError;
+		}
+		if ($data['card'] == 'apiConnectionError') {
+			throw new Stripe_ApiConnectionError;
+		}
+		if ($data['card'] == 'stripeError') {
+			throw new Stripe_Error;
+		}
+		if ($data['card'] == 'exception') {
+			throw new Exception;
+		}
+		$response = self::response('ChargeCreate');
 		$response->amount = $data['amount'];
 		return $response;
 	}
 
 	public static function retrieve($data) {
-		return self::response('StripeChargeRetrieve');
+		return self::response('ChargeRetrieve');
+	}
+
+	public static function response($type) {
+		$response = self::path() . $type . '.txt';
+		$response = file_get_contents($response);
+		if ($response) {
+			return json_decode($response);
+		}
+		return false;
+	}
+}
+
+class Stripe_Customer {
+	public static function path() {
+		return APP . 'Plugin' . DS . 'Stripe' . DS . 'Test' . DS . 'Fixture' . DS;
+	}
+
+	public static function create($data) {
+		if ($data['card'] == 'cardError') {
+			throw new Stripe_CardError;
+		}
+		if ($data['card'] == 'invalidRequestError') {
+			throw new Stripe_InvalidRequestError;
+		}
+		if ($data['card'] == 'authenticationError') {
+			throw new Stripe_AuthenticationError;
+		}
+		if ($data['card'] == 'apiConnectionError') {
+			throw new Stripe_ApiConnectionError;
+		}
+		if ($data['card'] == 'stripeError') {
+			throw new Stripe_Error;
+		}
+		if ($data['card'] == 'exception') {
+			throw new Exception;
+		}
+		$response = self::response('CustomerCreate');
+		return $response;
+	}
+
+	public static function retrieve($data) {
+		if ($data == 'invalid') {
+			throw new Exception;
+		}
+		return self::response('CustomerRetrieve');
 	}
 
 	public static function response($type) {
@@ -64,6 +128,15 @@ class Stripe_InvalidRequestError extends Exception {
 		);
 		return $error;
     }
+}
+
+class Stripe_AuthenticationError extends Exception {
+}
+
+class Stripe_ApiConnectionError extends Exception {
+}
+
+class Stripe_Error extends Exception {
 }
 
 class TestController extends Controller {
@@ -258,248 +331,171 @@ class StripeComponentTest extends CakeTestCase {
 		$this->assertContains('Invalid token id:', $result);
 	}
 
-    //
-	// /**
-	//  * @expectedException STRIPE_AUTHENTICATIONERROR
-	//  * @expectedExceptionMessage Invalid API Key provided
-	//  */
-	// public function testChargeAuthError() {
-	// 	Configure::write('Stripe.TestSecret', '123456789');
-	// 	$this->StripeComponent->startup($this->Controller);
-    //
-	// 	Stripe::setApiKey(Configure::read('Stripe.TestSecret'));
-	// 	$token = Stripe_Token::create(array(
-	// 		"card" => array(
-	// 		"number" => "4242424242424242",
-	// 		"exp_month" => 12,
-	// 		"exp_year" => 2020,
-	// 		"cvc" => 777
-	// 	)));
-	// 	$data = array('amount' => 3.77, 'stripeToken' => $token->id);
-	// 	$result = $this->StripeComponent->charge($data);
-	// }
-    //
-	// public function testCreateCustomerInvalidToken() {
-	// 	$this->StripeComponent->startup($this->Controller);
-	// 	$data = array('stripeToken' => '12345');
-	// 	$result = $this->StripeComponent->customerCreate($data);
-	// 	$this->assertContains('Invalid token id:', $result);
-	// }
-    //
-	// public function testCreateCustomer() {
-	// 	$this->StripeComponent->startup($this->Controller);
-    //
-	// 	Stripe::setApiKey(Configure::read('Stripe.TestSecret'));
-	// 	$token = Stripe_Token::create(array(
-	// 		'card' => array(
-	// 		'number' => '4242424242424242',
-	// 		'exp_month' => 12,
-	// 		'exp_year' => 2020,
-	// 		'cvc' => 777,
-	// 		'name' => 'Casi Robot',
-	// 		'address_zip' => '91361'
-	// 	)));
-	// 	$data = array(
-	// 		'stripeToken' => $token->id,
-	// 		'description' => 'casi@robot.com'
-	// 	);
-	// 	$result = $this->StripeComponent->customerCreate($data);
-	// 	$this->assertRegExp('/^cus\_[a-zA-Z0-9]+/', $result['stripe_id']);
-    //
-	// 	$customer = Stripe_Customer::retrieve($result['stripe_id']);
-	// 	$this->assertEquals($result['stripe_id'], $customer->id);
-	// 	$customer->delete();
-	// }
-    //
-	// public function testCreateCustomerWithFields() {
-	// 	Configure::write('Stripe.fields', array(
-	// 		'customer_id' => 'id',
-	// 		'description' => 'description',
-	// 		'customer_email' => 'email',
-	// 		'another' => 'field',
-	// 		'something' => 'notusedhere'
-	// 	));
-	// 	$this->StripeComponent->startup($this->Controller);
-    //
-	// 	Stripe::setApiKey(Configure::read('Stripe.TestSecret'));
-	// 	$token = Stripe_Token::create(array(
-	// 		'card' => array(
-	// 		'number' => '4242424242424242',
-	// 		'exp_month' => 12,
-	// 		'exp_year' => 2020,
-	// 		'cvc' => 777,
-	// 		'name' => 'Casi Robot',
-	// 		'address_zip' => '91361'
-	// 	)));
-	// 	$data = array(
-	// 		'stripeToken' => $token->id,
-	// 		'description' => 'A Test!',
-	// 		'email' => 'casi@robot.com'
-	// 	);
-	// 	$result = $this->StripeComponent->customerCreate($data);
-	// 	$this->assertRegExp('/^cus\_[a-zA-Z0-9]+/', $result['customer_id']);
-    //
-	// 	$customer = Stripe_Customer::retrieve($result['customer_id']);
-	// 	$this->assertEquals($result['customer_id'], $customer->id);
-	// 	$this->assertEquals($result['description'], $customer->description);
-	// 	$this->assertEquals($result['customer_email'], $customer->email);
-	// 	$customer->delete();
-	// }
-    //
-	// public function testCreateCustomerWithInvalidFields() {
-	// 	Configure::write('Stripe.fields', array(
-	// 		'another' => 'field',
-	// 		'something' => 'notusedhere'
-	// 	));
-	// 	$this->StripeComponent->startup($this->Controller);
-    //
-	// 	Stripe::setApiKey(Configure::read('Stripe.TestSecret'));
-	// 	$token = Stripe_Token::create(array(
-	// 		'card' => array(
-	// 		'number' => '4242424242424242',
-	// 		'exp_month' => 12,
-	// 		'exp_year' => 2020,
-	// 		'cvc' => 777,
-	// 		'name' => 'Casi Robot',
-	// 		'address_zip' => '91361'
-	// 	)));
-	// 	$data = array(
-	// 		'stripeToken' => $token->id,
-	// 		'description' => 'A Test!',
-	// 		'email' => 'casi@robot.com'
-	// 	);
-	// 	$result = $this->StripeComponent->customerCreate($data);
-	// 	$this->assertRegExp('/^cus\_[a-zA-Z0-9]+/', $result['stripe_id']);
-    //
-	// 	$customer = Stripe_Customer::retrieve($result['stripe_id']);
-	// 	$this->assertEquals($result['stripe_id'], $customer->id);
-	// 	$this->assertArrayNotHasKey('another', $result);
-	// 	$this->assertArrayNotHasKey('something', $result);
-	// 	$customer->delete();
-	// }
-    //
-	// public function testCreateCustomerAndCharge() {
-	// 	$this->StripeComponent->startup($this->Controller);
-    //
-	// 	Stripe::setApiKey(Configure::read('Stripe.TestSecret'));
-	// 	$token = Stripe_Token::create(array(
-	// 		'card' => array(
-	// 		'number' => '4242424242424242',
-	// 		'exp_month' => 12,
-	// 		'exp_year' => 2020,
-	// 		'cvc' => 777,
-	// 		'name' => 'Casi Robot',
-	// 		'address_zip' => '91361'
-	// 	)));
-	// 	$data = array(
-	// 		'stripeToken' => $token->id,
-	// 		'description' => 'Create Customer & Charge',
-	// 		'email' => 'casi@robot.com',
-	// 	);
-	// 	$result = $this->StripeComponent->customerCreate($data);
-	// 	$this->assertRegExp('/^cus\_[a-zA-Z0-9]+/', $result['stripe_id']);
-    //
-	// 	$customer = Stripe_Customer::retrieve($result['stripe_id']);
-	// 	$this->assertEquals($result['stripe_id'], $customer->id);
-    //
-	// 	$chargeData = array(
-	// 		'amount' => '14.69',
-	// 		'stripeCustomer' => $customer->id
-	// 	);
-	// 	$charge = $this->StripeComponent->charge($chargeData);
-	// 	$this->assertRegExp('/^ch\_[a-zA-Z0-9]+/', $charge['stripe_id']);
-    //
-	// 	$charge = Stripe_Charge::retrieve($charge['stripe_id']);
-    //
-	// 	$chargeData['amount'] = $chargeData['amount'] * 100;
-	// 	$this->assertEquals($chargeData['amount'], $charge->amount);
-    //
-	// 	$customer->delete();
-	// }
-    //
-	// public function testCreateCustomerAndSubscribeToPlan() {
-	// 	$this->StripeComponent->startup($this->Controller);
-    //
-	// 	Stripe::setApiKey(Configure::read('Stripe.TestSecret'));
-    //
-	// 	// create a plan for this test
-	// 	Stripe_Plan::create(array(
-	// 		'amount' => 2000,
-	// 		'interval' => "month",
-	// 		'name' => "Test Plan",
-	// 		'currency' => 'usd',
-	// 		'id' => 'testplan')
-	// 	);
-    //
-	// 	Stripe::setApiKey(Configure::read('Stripe.TestSecret'));
-	// 	$token = Stripe_Token::create(array(
-	// 		'card' => array(
-	// 		'number' => '4242424242424242',
-	// 		'exp_month' => 12,
-	// 		'exp_year' => 2020,
-	// 		'cvc' => 777,
-	// 		'name' => 'Casi Robot',
-	// 		'address_zip' => '91361'
-	// 	)));
-	// 	$data = array(
-	// 		'stripeToken' => $token->id,
-	// 		'plan' => 'testplan',
-	// 		'description' => 'Create Customer & Subscribe to Plan',
-	// 		'email' => 'casi@robot.com',
-	// 	);
-	// 	$result = $this->StripeComponent->customerCreate($data);
-	// 	$this->assertRegExp('/^cus\_[a-zA-Z0-9]+/', $result['stripe_id']);
-    //
-	// 	$customer = Stripe_Customer::retrieve($result['stripe_id']);
-	// 	$this->assertEquals($result['stripe_id'], $customer->id);
-	// 	$this->assertEquals($data['plan'], $customer->subscription->plan->id);
-    //
-	// 	// delete the plan
-	// 	$plan = Stripe_Plan::retrieve('testplan');
-	// 	$plan->delete();
-    //
-	// 	$customer->delete();
-	// }
-    //
-	// public function testCustomerRetrieveAndUpdate() {
-	// 	$this->StripeComponent->startup($this->Controller);
-	// 	Stripe::setApiKey(Configure::read('Stripe.TestSecret'));
-    //
-	// 	$token = Stripe_Token::create(array(
-	// 		'card' => array(
-	// 		'number' => '4242424242424242',
-	// 		'exp_month' => 12,
-	// 		'exp_year' => 2020,
-	// 		'cvc' => 777,
-	// 		'name' => 'Casi Robot',
-	// 		'address_zip' => '91361'
-	// 	)));
-	// 	$data = array(
-	// 		'stripeToken' => $token->id,
-	// 		'description' => 'Original Description',
-	// 		'email' => 'casi@robot.com',
-	// 	);
-	// 	$result = $this->StripeComponent->customerCreate($data);
-	// 	$this->assertRegExp('/^cus\_[a-zA-Z0-9]+/', $result['stripe_id']);
-    //
-	// 	$customer = $this->StripeComponent->customerRetrieve($result['stripe_id']);
-	// 	$this->assertEquals($result['stripe_id'], $customer->id);
-    //
-	// 	$customer->description = 'An updated description';
-	// 	$customer->save();
-    //
-	// 	$customer = $this->StripeComponent->customerRetrieve($result['stripe_id']);
-	// 	$this->assertEquals('An updated description', $customer->description);
-    //
-	// 	$customer->delete();
-	// }
-    //
-	// public function testCustomerRetrieveNotFound() {
-	// 	$this->StripeComponent->startup($this->Controller);
-	// 	Stripe::setApiKey(Configure::read('Stripe.TestSecret'));
-    //
-	// 	$customer = $this->StripeComponent->customerRetrieve('invalid');
-	// 	$this->assertFalse($customer);
-	// }
+	public function testChargeAuthenticationError() {
+		$data = array(
+			'amount' => 2.77,
+			'stripeToken' => 'authenticationError'
+		);
+		$result = $this->StripeComponent->charge($data);
+		$this->assertInternalType('string', $result);
+		$this->assertContains('Payment processor API key error.', $result);
+	}
+
+	public function testChargeApiConnectionError() {
+		$data = array(
+			'amount' => 2.77,
+			'stripeToken' => 'apiConnectionError'
+		);
+		$result = $this->StripeComponent->charge($data);
+		$this->assertInternalType('string', $result);
+		$this->assertContains('Network communication with payment processor failed, try again later', $result);
+	}
+
+	public function testChargeStripeError() {
+		$data = array(
+			'amount' => 2.77,
+			'stripeToken' => 'stripeError'
+		);
+		$result = $this->StripeComponent->charge($data);
+		$this->assertInternalType('string', $result);
+		$this->assertContains('Payment processor error, try again later.', $result);
+	}
+
+	public function testChargeException() {
+		$data = array(
+			'amount' => 2.77,
+			'stripeToken' => 'exception'
+		);
+		$result = $this->StripeComponent->charge($data);
+		$this->assertInternalType('string', $result);
+		$this->assertContains('There was an error, try again later.', $result);
+	}
+
+	public function testCreateCustomer() {
+		$data = array(
+			'stripeToken' => 'tok_65Vl7Y7eZvKYlo2CurIZVU1z',
+			'description' => 'casi@robot.com'
+		);
+		$result = $this->StripeComponent->customerCreate($data);
+		$this->assertRegExp('/^cus\_[a-zA-Z0-9]+/', $result['stripe_id']);
+
+		$customer = Stripe_Customer::retrieve($result['stripe_id']);
+		$this->assertEquals($result['stripe_id'], $customer->id);
+	}
+
+	public function testCreateCustomerWithFields() {
+		Configure::write('Stripe.fields', array(
+			'customer_id' => 'id',
+			'description' => 'description',
+			'customer_email' => 'email',
+			'another' => 'field',
+			'something' => 'notusedhere'
+		));
+		$this->StripeComponent->startup($this->Controller);
+
+		$data = array(
+			'stripeToken' => 'tok_65Vl7Y7eZvKYlo2CurIZVU1z',
+			'description' => 'A Test!',
+			'email' => 'casi@robot.com'
+		);
+		$result = $this->StripeComponent->customerCreate($data);
+		$this->assertRegExp('/^cus\_[a-zA-Z0-9]+/', $result['customer_id']);
+
+		$customer = Stripe_Customer::retrieve($result['customer_id']);
+		$this->assertEquals($result['customer_id'], $customer->id);
+		$this->assertEquals($result['description'], $customer->description);
+	}
+
+	public function testCreateCustomerWithInvalidFields() {
+		Configure::write('Stripe.fields', array(
+			'another' => 'field',
+			'something' => 'notusedhere'
+		));
+		$this->StripeComponent->startup($this->Controller);
+
+		$data = array(
+			'stripeToken' => 'tok_65Vl7Y7eZvKYlo2CurIZVU1z',
+			'description' => 'A Test!',
+			'email' => 'casi@robot.com'
+		);
+		$result = $this->StripeComponent->customerCreate($data);
+		$this->assertRegExp('/^cus\_[a-zA-Z0-9]+/', $result['stripe_id']);
+
+		$customer = Stripe_Customer::retrieve($result['stripe_id']);
+		$this->assertEquals($result['stripe_id'], $customer->id);
+		$this->assertArrayNotHasKey('another', $result);
+		$this->assertArrayNotHasKey('something', $result);
+	}
+
+	public function testCustomerCardError() {
+		$data = array(
+			'amount' => 1.77,
+			'stripeToken' => 'cardError'
+		);
+		$result = $this->StripeComponent->customerCreate($data);
+		$this->assertInternalType('string', $result);
+		$this->assertEquals('Your card was declined.', $result);
+	}
+
+	public function testCustomerInvalidRequestError() {
+		$data = array(
+			'amount' => 2.77,
+			'stripeToken' => 'invalidRequestError'
+		);
+		$result = $this->StripeComponent->customerCreate($data);
+		$this->assertInternalType('string', $result);
+		$this->assertContains('Invalid token id:', $result);
+	}
+
+	public function testCustomerAuthenticationError() {
+		$data = array(
+			'amount' => 2.77,
+			'stripeToken' => 'authenticationError'
+		);
+		$result = $this->StripeComponent->customerCreate($data);
+		$this->assertInternalType('string', $result);
+		$this->assertContains('Payment processor API key error.', $result);
+	}
+
+	public function testCustomerApiConnectionError() {
+		$data = array(
+			'amount' => 2.77,
+			'stripeToken' => 'apiConnectionError'
+		);
+		$result = $this->StripeComponent->customerCreate($data);
+		$this->assertInternalType('string', $result);
+		$this->assertContains('Network communication with payment processor failed, try again later', $result);
+	}
+
+	public function testCustomerStripeError() {
+		$data = array(
+			'amount' => 2.77,
+			'stripeToken' => 'stripeError'
+		);
+		$result = $this->StripeComponent->customerCreate($data);
+		$this->assertInternalType('string', $result);
+		$this->assertContains('Payment processor error, try again later.', $result);
+	}
+
+	public function testCustomerException() {
+		$data = array(
+			'amount' => 2.77,
+			'stripeToken' => 'exception'
+		);
+		$result = $this->StripeComponent->customerCreate($data);
+		$this->assertInternalType('string', $result);
+		$this->assertContains('There was an error, try again later.', $result);
+	}
+
+	public function testCustomerRetrieve() {
+		$id = 'cus_5hr9R9860uchZg';
+		$customer = $this->StripeComponent->customerRetrieve($id);
+		$this->assertEquals($id, $customer->id);
+	}
+
+	public function testCustomerRetrieveNotFound() {
+		$customer = $this->StripeComponent->customerRetrieve('invalid');
+		$this->assertFalse($customer);
+	}
 
 }
