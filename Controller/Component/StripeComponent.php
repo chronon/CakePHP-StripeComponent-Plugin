@@ -54,6 +54,26 @@ class StripeComponent extends Component {
 	public $key = null;
 
 /**
+ * Valid parameters that can be included in the call to Stripe_Charge::create
+ *
+ * @var array
+ * @access protected
+ */
+	protected $_chargeParams = array(
+		'amount',
+		'currency',
+		'customer',
+		'card',
+		'description',
+		'metadata',
+		'capture',
+		'statement_descriptor',
+		'receipt_email',
+		'application_fee',
+		'shipping'
+	);
+
+/**
  * Controller startup. Loads the Stripe API library and sets options from
  * APP/Config/bootstrap.php.
  *
@@ -119,16 +139,6 @@ class StripeComponent extends Component {
 			throw new CakeException('Amount is required and must be numeric.');
 		}
 
-		// set the (optional) description field to null if not set in $data
-		if (!isset($data['description'])) {
-			$data['description'] = null;
-		}
-
-		// set the (optional) capture field to null if not set in $data
-		if (!isset($data['capture'])) {
-			$data['capture'] = null;
-		}
-
 		// format the amount, in cents.
 		$data['amount'] = $data['amount'] * 100;
 
@@ -136,26 +146,14 @@ class StripeComponent extends Component {
 		$error = null;
 
 		$chargeData = array();
-		$validParams = array(
-			'amount',
-			'currency',
-			'customer',
-			'card',
-			'description',
-			'metadata',
-			'capture',
-			'statement_descriptor',
-			'receipt_email',
-			'application_fee',
-			'shipping'
-		);
-		foreach ($validParams as $param) {
+		foreach ($this->_chargeParams as $param) {
 			if (isset($data[$param])) {
 				$chargeData[$param] = $data[$param];
 			}
+
 		}
 
-		if (! isset($chargeData['currency'])) {
+		if (!isset($chargeData['currency'])) {
 			$chargeData['currency'] = $this->currency;
 		}
 

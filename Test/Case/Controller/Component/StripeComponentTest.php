@@ -8,7 +8,7 @@ App::uses('StripeComponent', 'Stripe.Controller/Component');
 
 /**
  * The following `Stripe` classes mock static function calls used in the
- * StripeComponent. 
+ * StripeComponent.
  *
  */
 class Stripe {
@@ -23,6 +23,8 @@ class Stripe_Charge {
 	}
 
 	public static function create($data) {
+		$mockFile = 'ChargeCreate';
+
 		if ($data['card'] == 'cardError') {
 			throw new Stripe_CardError;
 		}
@@ -41,13 +43,20 @@ class Stripe_Charge {
 		if ($data['card'] == 'exception') {
 			throw new Exception;
 		}
-		$response = self::response('ChargeCreate');
+		if (isset($data['statement_descriptor']) && $data['statement_descriptor'] == 'chargeParams') {
+			$mockFile = 'ChargeCreateParams';
+		}
+		$response = self::response($mockFile);
 		$response->amount = $data['amount'];
 		return $response;
 	}
 
 	public static function retrieve($data) {
-		return self::response('ChargeRetrieve');
+		$mockFile = 'ChargeRetrieve';
+		if ($data == 'chargeParams') {
+			$mockFile = 'ChargeRetrieveParams';
+		}
+		return self::response($mockFile);
 	}
 
 	public static function response($type) {
@@ -496,6 +505,38 @@ class StripeComponentTest extends CakeTestCase {
 	public function testCustomerRetrieveNotFound() {
 		$customer = $this->StripeComponent->customerRetrieve('invalid');
 		$this->assertFalse($customer);
+	}
+
+	public function testChargeWithAdditionalChargeDataFields() {
+		$data = array(
+			'amount' => 7.45,
+			'stripeToken' => 'tok_65Vl7Y7eZvKYlo2CurIZVU1z',
+			'statement_descriptor' => 'some chargeParams',
+			'receipt_email' => 'some@email.com'
+		);
+		$result = $this->StripeComponent->charge($data);
+		$this->assertRegExp('/^ch\_[a-zA-Z0-9]+/', $result['stripe_id']);
+
+		$charge = Stripe_Charge::retrieve('chargeParams');
+		$this->assertEquals($result['stripe_id'], $charge->id);
+		$this->assertEquals($data['statement_descriptor'], $charge->statement_descriptor);
+		$this->assertEquals($data['receipt_email'], $charge->receipt_email);
+	}
+
+	public function testChargeWithAdditionalInvalidChargeDataFields() {
+		$data = array(
+			'amount' => 7.45,
+			'stripeToken' => 'tok_65Vl7Y7eZvKYlo2CurIZVU1z',
+			'statement_descriptor' => 'some chargeParams',
+			'invalid' => 'foobar'
+		);
+		$result = $this->StripeComponent->charge($data);
+		$this->assertRegExp('/^ch\_[a-zA-Z0-9]+/', $result['stripe_id']);
+
+		$charge = Stripe_Charge::retrieve('chargeParams');
+		$this->assertEquals($result['stripe_id'], $charge->id);
+		$this->assertEquals($data['statement_descriptor'], $charge->statement_descriptor);
+		$this->assertObjectNotHasAttribute('invalid', $charge);
 	}
 
 }
