@@ -10,7 +10,7 @@ Version 2 adds the ability to create and retrieve customers, optionally subscrib
 Compatibility:
 --------------
 
-Tested with CakePHP 2.2.x and up, though please not it's not compatible with CakePHP 3.x. The required Stripe PHP API library requires PHP 5 with cURL support.
+Tested with CakePHP 2.2.x and up, though please note it's not compatible with CakePHP 3.x. The required Stripe PHP API library requires PHP 5 with cURL support.
 
 Installation:
 -------------
