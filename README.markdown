@@ -1,6 +1,8 @@
 CakePHP Stripe Component
 ========================
 
+**NOTE:** This plugin is CakePHP 2 only and may not be updated for CakePHP 3. For CakePHP 3, consider checking out [Omnipay](http://omnipay.thephpleague.com/). A great introduction on how to use it with CakePHP 3 can be found in [Jose's post](http://josediazgonzalez.com/2014/12/14/processing-payments-with-cakephp-3/).
+
 This is a simple component that interfaces a CakePHP app with Stripe's PHP API library. Pass the component an array containing at least an amount and a Stripe token id, it will attempt the charge and return an array of the fields you want.
 
 Version 2 adds the ability to create and retrieve customers, optionally subscribing them to a recurring payment plan or just charging them.
@@ -8,7 +10,7 @@ Version 2 adds the ability to create and retrieve customers, optionally subscrib
 Compatibility:
 --------------
 
-Tested with CakePHP 2.2.x and up, though not with CakePHP 3.x. The required Stripe PHP API library requires PHP 5 with cURL support.
+Tested with CakePHP 2.2.x and up, though please not it's not compatible with CakePHP 3.x. The required Stripe PHP API library requires PHP 5 with cURL support.
 
 Installation:
 -------------
