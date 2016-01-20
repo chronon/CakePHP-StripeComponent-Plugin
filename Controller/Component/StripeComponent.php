@@ -70,7 +70,8 @@ class StripeComponent extends Component {
 		'statement_descriptor',
 		'receipt_email',
 		'application_fee',
-		'shipping'
+		'shipping',
+		'source'
 	);
 
 /**
