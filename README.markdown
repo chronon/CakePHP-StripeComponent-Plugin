@@ -1,7 +1,7 @@
 CakePHP Stripe Component
 ========================
 
-**NOTE:** This plugin is CakePHP 2 only and may not be updated for CakePHP 3. For CakePHP 3, consider checking out [Omnipay](http://omnipay.thephpleague.com/). A great introduction on how to use it with CakePHP 3 can be found in [Jose's post](http://josediazgonzalez.com/2014/12/14/processing-payments-with-cakephp-3/).
+**NOTE:** This plugin is CakePHP 2 only and **will not be updated for CakePHP 3**. For CakePHP 3, consider checking out [Omnipay](http://omnipay.thephpleague.com/). A great introduction on how to use it with CakePHP 3 can be found in [Jose's post](http://josediazgonzalez.com/2014/12/14/processing-payments-with-cakephp-3/).
 
 This is a simple component that interfaces a CakePHP app with Stripe's PHP API library. Pass the component an array containing at least an amount and a Stripe token id, it will attempt the charge and return an array of the fields you want.
 
@@ -10,7 +10,7 @@ Version 2 adds the ability to create and retrieve customers, optionally subscrib
 Compatibility:
 --------------
 
-Tested with CakePHP 2.2.x and up, though please note it's not compatible with CakePHP 3.x. The required Stripe PHP API library requires PHP 5 with cURL support.
+Tested with CakePHP 2.2.x and up, though please note it's not compatible with CakePHP 3.x. The required Stripe PHP API library requires PHP 5 with cURL support and must be version 1.18.0 or below. This plugin will now work with version 2.0.0 or above without modification.
 
 Installation:
 -------------
@@ -22,7 +22,7 @@ In your project `composer.json` file:
 ```json
 {
 	"require": {
-		"chronon/stripe": "dev-master"
+		"chronon/stripe": "~2.0"
 	},
 	"config": {
         "vendor-dir": "Vendor"
@@ -39,6 +39,8 @@ In your app's `Config/bootstrap.php`, import composer's autoload file:
 App::import('Vendor', array('file' => 'autoload'));
 ```
 **Using git:**
+
+Composer installation is highly recommended over git installation.
 
 You will need the component (packaged as a plugin), and [Stripe's PHP library](https://github.com/stripe/stripe-php). The Stripe library needs to be in this plugin's Vendor directory and must be named 'Stripe'.  Using git you can add this plugin and the required Stripe library (as a git submodule). From your APP root (where you see your Model, Controller, Plugin, etc. directories) run:
 
